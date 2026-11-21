@@ -196,6 +196,10 @@ a.lobby-row:hover { background: var(--panel-2); }
 .invite input { flex: 1; min-width: 0; font-size: 13px; }
 a.btn { text-decoration: none; justify-content: center; }
 
+/* ---------- puzzles ---------- */
+.puzzle-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.result-banner { font-size: 15px; }
+
 /* ---------- play vs bot ---------- */
 .clock {
   margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px;

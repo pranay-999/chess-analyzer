@@ -30,8 +30,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -188,6 +190,49 @@ class AppIntegrationTest {
                 () -> http.post().uri("/api/games/import").body(Map.of("text", "8/8/8/8/8/8/8/K7 w - - 0 1"))
                         .retrieve().body(String.class));
         assertEquals(HttpStatus.BAD_REQUEST, noKing.getStatusCode());
+    }
+
+    static boolean stockfishInstalled() {
+        return java.nio.file.Files.isExecutable(java.nio.file.Path.of("/usr/games/stockfish"));
+    }
+
+    record NextPuzzle(Map<String, Object> puzzle, long due, long total) {
+    }
+
+    record Attempt(boolean correct, String solutionUci, String yourMoveSan) {
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIf("stockfishInstalled")
+    void yourBlundersBecomePuzzles() throws InterruptedException {
+        // "Me" (white) blunders with 2. g4?? allowing Qh4#.
+        String pgn = "[White \"Me\"]\n[Black \"Friend\"]\n[Result \"0-1\"]\n\n1. f3 e5 2. g4 Qh4# 0-1\n";
+        GameSummary game = http.post().uri("/api/games/import").body(Map.of("text", pgn, "playerColor", "WHITE"))
+                .retrieve().body(GameSummary.class);
+
+        AnalysisView analysis = http.post().uri("/api/games/{id}/analysis?engine=stockfish&depth=10", game.id())
+                .retrieve().body(AnalysisView.class);
+        for (int i = 0; i < 60 && analysis.status() != AnalysisStatus.DONE; i++) {
+            Thread.sleep(500);
+            analysis = http.get().uri("/api/games/{id}/analysis?engine=stockfish", game.id()).retrieve().body(AnalysisView.class);
+        }
+        assertEquals(AnalysisStatus.DONE, analysis.status());
+
+        NextPuzzle next = http.get().uri("/api/puzzles/next").retrieve().body(NextPuzzle.class);
+        assertNotNull(next.puzzle(), "a puzzle should have been made from the blunder");
+        assertTrue(next.due() >= 1);
+        Number id = (Number) next.puzzle().get("id");
+        String yourBlunderSan = (String) next.puzzle().get("playedSan");
+        assertTrue(Set.of("f3", "g4").contains(yourBlunderSan), yourBlunderSan);   // only YOUR (white's) moves
+        String yourBlunderUci = yourBlunderSan.equals("g4") ? "g2g4" : "f2f3";
+
+        // Repeating the blunder is wrong; the engine's move is right.
+        Attempt wrong = http.post().uri("/api/puzzles/{id}/attempt", id).body(Map.of("uci", yourBlunderUci))
+                .retrieve().body(Attempt.class);
+        assertFalse(wrong.correct());
+        Attempt right = http.post().uri("/api/puzzles/{id}/attempt", id).body(Map.of("uci", wrong.solutionUci()))
+                .retrieve().body(Attempt.class);
+        assertTrue(right.correct());
     }
 
     @Test

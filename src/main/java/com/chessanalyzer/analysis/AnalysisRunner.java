@@ -6,6 +6,7 @@ import com.chessanalyzer.engine.EngineFactory;
 import com.chessanalyzer.engine.Evaluation;
 import com.chessanalyzer.game.Game;
 import com.chessanalyzer.game.GameMove;
+import com.chessanalyzer.puzzle.PuzzleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -37,11 +38,14 @@ public class AnalysisRunner {
     private final AnalysisRepository analyses;
     private final EngineFactory engines;
     private final TransactionTemplate transactions;   // run a block of code in a transaction, by hand
+    private final PuzzleService puzzles;
 
-    public AnalysisRunner(AnalysisRepository analyses, EngineFactory engines, TransactionTemplate transactions) {
+    public AnalysisRunner(AnalysisRepository analyses, EngineFactory engines, TransactionTemplate transactions,
+                          PuzzleService puzzles) {
         this.analyses = analyses;
         this.engines = engines;
         this.transactions = transactions;
+        this.puzzles = puzzles;
     }
 
     @Async
@@ -87,6 +91,10 @@ public class AnalysisRunner {
                             .complete(rows, result.accuracyWhite(), result.accuracyBlack()));
             log.info("Analysis {} done: accuracy white {} / black {}", analysisId,
                     result.accuracyWhite(), result.accuracyBlack());
+
+            // 4. Your mistakes become puzzles (Stockfish analyses only; see PuzzleService).
+            int created = puzzles.createFromAnalysis(analysisId);
+            if (created > 0) log.info("Analysis {}: {} new puzzles", analysisId, created);
         } catch (Exception e) {
             // An exception in an @Async method has nobody to catch it, so we must record it ourselves.
             log.error("Analysis {} failed", analysisId, e);

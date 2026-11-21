@@ -146,6 +146,38 @@ export interface LobbyEntry {
   joinerColor: Color
 }
 
+/** A puzzle made from one of your mistakes (PuzzleService.PuzzleView). The answer is not included. */
+export interface PuzzleView {
+  id: number
+  fen: string
+  sideToMove: Color
+  playedSan: string
+  classification: Classification
+  gameId: number
+  white: string
+  black: string
+  playedAt: string
+  attempts: number
+  solved: number
+}
+
+export interface NextPuzzle {
+  puzzle: PuzzleView | null
+  due: number
+  total: number
+  nextDueAt: string | null
+}
+
+export interface PuzzleAttempt {
+  correct: boolean
+  exactMatch: boolean // false = a different but equally good move
+  yourMoveSan: string | null
+  solutionUci: string
+  solutionSan: string
+  playedSan: string
+  nextDueAt: string
+}
+
 export interface SyncResult {
   username: string
   monthsFetched: number
@@ -256,6 +288,12 @@ export const api = {
     request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/moves`, json({ uci })),
   resignOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/resign`, { method: 'POST' }),
   cancelOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+
+  // ---- puzzles from your mistakes ----
+  nextPuzzle: (player?: string) =>
+    request<NextPuzzle>(`/api/puzzles/next${player ? `?player=${encodeURIComponent(player)}` : ''}`),
+  attemptPuzzle: (id: number, uci: string) => request<PuzzleAttempt>(`/api/puzzles/${id}/attempt`, json({ uci })),
+  revealPuzzle: (id: number) => request<PuzzleAttempt>(`/api/puzzles/${id}/reveal`, { method: 'POST' }),
 
   listBots: () => request<BotLevel[]>('/api/bots'),
 

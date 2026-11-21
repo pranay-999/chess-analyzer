@@ -73,7 +73,7 @@ public final class MoveAnalyzer {
     }
 
     /** White's chance of winning (0..100) for an evaluation. Needs the side to move to read "mate 0". */
-    static double whiteWinPercent(Evaluation e, Color sideToMove) {
+    public static double whiteWinPercent(Evaluation e, Color sideToMove) {
         if (e.mate() != null) {
             if (e.mate() == 0) {
                 return sideToMove == Color.WHITE ? 0 : 100;   // side to move is checkmated

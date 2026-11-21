@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage'
 import OnlineGamePage from './pages/OnlineGamePage'
 import OnlinePage from './pages/OnlinePage'
 import PlayPage from './pages/PlayPage'
+import PuzzlesPage from './pages/PuzzlesPage'
 
 /** The frame around every page: header + whichever page matches the URL. */
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
         </Link>
         <nav className="topnav">
           <NavLink to="/" end>My games</NavLink>
+          <NavLink to="/puzzles">Puzzles</NavLink>
           <NavLink to="/play">Play</NavLink>
           <NavLink to="/online">Online</NavLink>
           <NavLink to="/analyze">Analysis board</NavLink>
@@ -44,6 +46,7 @@ export default function App() {
           <Route path="/analyze" element={<AnalyzePage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/play" element={<PlayPage />} />
+          <Route path="/puzzles" element={<PuzzlesPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/online" element={<RequireLogin><OnlinePage /></RequireLogin>} />
           <Route path="/online/:id" element={<RequireLogin><OnlineGameRoute /></RequireLogin>} />

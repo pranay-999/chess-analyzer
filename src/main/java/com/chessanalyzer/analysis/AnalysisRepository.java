@@ -6,12 +6,17 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AnalysisRepository extends JpaRepository<Analysis, Long> {
 
     /** The newest analysis of a game by one engine ("First" = LIMIT 1). */
     Optional<Analysis> findFirstByGameIdAndEngineOrderByCreatedAtDesc(Long gameId, String engine);
+
+    /** Ids of all finished analyses by one engine (used to make puzzles from older analyses). */
+    @Query("select a.id from Analysis a where a.status = com.chessanalyzer.analysis.AnalysisStatus.DONE and a.engine = :engine")
+    List<Long> findDoneIds(String engine);
 
     /** Loads the analysis, its game AND the game's moves in one go: everything the job needs. */
     @EntityGraph(attributePaths = {"game", "game.moves"})

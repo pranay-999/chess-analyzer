@@ -482,6 +482,9 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
           ))}
         </tbody>
       </table>
+      {analysis.engine === 'stockfish' && (
+        <Link to="/puzzles" className="small">🧩 Your mistakes from this game are now puzzles: practise them</Link>
+      )}
       {controls}
     </div>
   )
