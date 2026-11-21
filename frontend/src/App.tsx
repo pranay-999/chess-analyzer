@@ -5,6 +5,7 @@ import ThemePicker from './components/ThemePicker'
 import AnalyzePage from './pages/AnalyzePage'
 import GamePage from './pages/GamePage'
 import HomePage from './pages/HomePage'
+import ImportPage from './pages/ImportPage'
 import LoginPage from './pages/LoginPage'
 import OnlineGamePage from './pages/OnlineGamePage'
 import OnlinePage from './pages/OnlinePage'
@@ -41,6 +42,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/analyze" element={<AnalyzePage />} />
+          <Route path="/import" element={<ImportPage />} />
           <Route path="/play" element={<PlayPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/online" element={<RequireLogin><OnlinePage /></RequireLogin>} />

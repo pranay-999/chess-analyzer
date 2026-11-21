@@ -38,17 +38,18 @@ public class GameController {
     }
 
     /**
-     * POST /api/games/import   body: {"text": "<PGN or FEN>", "playerColor": "WHITE"}
+     * POST /api/games/import   body: {"text": "<PGN, FEN or game link>", "playerColor": "WHITE", "asPlayer": "me"}
      * @RequestBody = read the JSON body into a Java record.
      * Answers 201 Created with a Location header pointing at the new game.
      */
     @PostMapping("/games/import")
     public ResponseEntity<GameSummary> importGame(@RequestBody ImportRequest request) {
-        GameSummary game = pastedGames.importText(request.text(), request.playerColor());
+        GameSummary game = pastedGames.importText(request.text(), request.playerColor(), request.asPlayer());
         return ResponseEntity.created(URI.create("/api/games/" + game.id())).body(game);
     }
 
-    public record ImportRequest(String text, Color playerColor) {
+    /** @param asPlayer optional: your username, so the side you played is detected automatically */
+    public record ImportRequest(String text, Color playerColor, String asPlayer) {
     }
 
     /** GET /api/games/42 — one game with every move and position. */

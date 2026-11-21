@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chess Analyzer</title>
+
+    <!-- Installable app ("Add to Home screen"), and Android's Share menu: see manifest.json -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2f6fde" />
+    <!-- iPhone/iPad home-screen icon and full-screen mode -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Chess Analyzer" />
+
     <script>
       // Apply the saved theme BEFORE the page draws, so it doesn't flash the wrong colours.
       // (theme.tsx keeps it up to date afterwards.)

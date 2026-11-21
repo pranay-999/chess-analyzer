@@ -3,6 +3,7 @@ package com.chessanalyzer;
 import com.chessanalyzer.analysis.AnalysisStatus;
 import com.chessanalyzer.analysis.AnalysisView;
 import com.chessanalyzer.analysis.Classification;
+import com.chessanalyzer.chess.Color;
 import com.chessanalyzer.chesscom.ChessComClient;
 import com.chessanalyzer.chesscom.ChessComGame;
 import com.chessanalyzer.chesscom.ChessComGame.ChessComPlayer;
@@ -141,6 +142,28 @@ class AppIntegrationTest {
         GameDetail game = http.get().uri("/api/games/{id}", summary.id()).retrieve().body(GameDetail.class);
         assertEquals(4, game.moves().size());
         assertEquals(null, game.chesscomUrl());
+    }
+
+    @Test
+    void chessComLinkIsFetchedAndYourSideDetected() {
+        String pgn = "[Site \"Chess.com\"]\n[White \"bob\"]\n[Black \"alice\"]\n[Result \"0-1\"]\n\n1. f3 e5 2. g4 Qh4# 0-1\n";
+        when(chessCom.fetchFinishedGamePgn("live", 4242L)).thenReturn(pgn);
+
+        // What a phone's share menu sends: some text with the link inside.
+        GameSummary summary = http.post().uri("/api/games/import")
+                .body(Map.of("text", "Check out my game! https://www.chess.com/game/live/4242?username=alice",
+                        "asPlayer", "alice"))
+                .retrieve().body(GameSummary.class);
+        assertEquals(Color.BLACK, summary.playerColor());   // alice was black -> board flipped for her
+        assertEquals("WIN", summary.outcome());
+    }
+
+    @Test
+    void unfinishedChessComPgnIsRefused() {
+        String live = "[Site \"Chess.com\"]\n[White \"a\"]\n[Black \"b\"]\n[Result \"*\"]\n\n1. e4 e5 *\n";
+        HttpClientErrorException refused = assertThrows(HttpClientErrorException.class,
+                () -> http.post().uri("/api/games/import").body(Map.of("text", live)).retrieve().body(String.class));
+        assertTrue(refused.getResponseBodyAs(ProblemDetail.class).getDetail().contains("still being played"));
     }
 
     @Test

@@ -58,6 +58,37 @@ class ChessComClientTest {
     }
 
     @Test
+    void fetchesOneFinishedGameByLink() {
+        // 1. Chess.com's game-page endpoint: finished, white = Alice, ended in November 2026.
+        server.expect(requestTo("https://www.chess.com/callback/live/game/555"))
+                .andRespond(withSuccess("""
+                        {"game": {"isFinished": true, "endTime": 1763650000,
+                                  "pgnHeaders": {"White": "Alice", "Black": "Bob", "Date": "2025.11.20"}}}
+                        """, MediaType.APPLICATION_JSON));
+        // 2. Alice's archive for the month the game ENDED (endTime 1763650000 = 2025-11-20 UTC).
+        server.expect(requestTo("https://api.chess.com/pub/player/alice/games/2025/11"))
+                .andRespond(withSuccess("""
+                        {"games": [
+                          {"url": "https://www.chess.com/game/live/111", "pgn": "other", "end_time": 1763640000},
+                          {"url": "https://www.chess.com/game/live/555", "pgn": "1. e4 e5 *", "end_time": 1763650000}
+                        ]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertEquals("1. e4 e5 *", client.fetchFinishedGamePgn("live", 555));
+        server.verify();
+    }
+
+    @Test
+    void refusesAGameStillBeingPlayed() {
+        server.expect(requestTo("https://www.chess.com/callback/live/game/556"))
+                .andRespond(withSuccess("""
+                        {"game": {"isFinished": false, "pgnHeaders": {"White": "Alice", "Black": "Bob"}}}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThrows(GameInProgressException.class, () -> client.fetchFinishedGamePgn("live", 556));
+    }
+
+    @Test
     void parsesGamesJson() {
         String url = "https://api.chess.com/pub/player/alice/games/2026/11";
         server.expect(requestTo(url)).andRespond(withSuccess("""

@@ -236,6 +236,15 @@ a.btn { text-decoration: none; justify-content: center; }
 .seg.active { background: var(--panel-2); color: var(--text); font-weight: 600; }
 .link-btn { font: inherit; color: var(--accent); background: none; border: none; padding: 0 8px 0 0; cursor: pointer; text-decoration: underline; }
 .examples { margin-top: 14px; }
+.paste-btn { width: 100%; justify-content: center; margin-bottom: 12px; padding: 12px; }
+.phone-help { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.phone-help summary { cursor: pointer; font-weight: 600; }
+.phone-help p { color: var(--muted); font-size: 14px; }
+.import-card { max-width: 640px; margin: 0 auto; }
+.import-preview {
+  white-space: pre-wrap; word-break: break-all; font-size: 12px; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 140px; overflow: hidden;
+}
 .container { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
 
 /* ---------- building blocks ---------- */

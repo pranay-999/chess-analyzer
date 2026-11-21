@@ -210,11 +210,12 @@ export const api = {
   getGame: (id: string) => request<GameDetail>(`/api/games/${encodeURIComponent(id)}`),
 
   /** Store a pasted PGN or FEN as a game; returns it so we can open /games/{id}. */
-  importGame: (text: string, playerColor: Color) =>
+  /** text: a PGN, a FEN, or a Chess.com/Lichess game link. asPlayer: your username, to detect your side. */
+  importGame: (text: string, playerColor: Color, asPlayer?: string) =>
     request<GameSummary>('/api/games/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }, // tells Spring the body is JSON (@RequestBody)
-      body: JSON.stringify({ text, playerColor }),
+      body: JSON.stringify({ text, playerColor, asPlayer }),
     }),
 
   /** Returns null when the game has never been analysed by this engine (the API answers 404). */

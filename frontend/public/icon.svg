@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon (also used to generate icon-192.png / icon-512.png). Full-bleed square so
+       Android can crop it into a circle or rounded square ("maskable"). -->
+  <rect width="512" height="512" fill="#2f6fde"/>
+  <g fill="#ffffff">
+    <!-- a simple knight silhouette -->
+    <path d="M190 402h176c0-58-18-110-36-150l18-30-14-58c-20-38-62-56-104-52l-10-24-22 34c-30 16-52 44-60 78l-24 58c-6 14 6 30 22 26l42-12 28-26c4 30-10 60-28 86-14 22-14 46-8 70z"/>
+    <rect x="160" y="410" width="236" height="34" rx="10"/>
+  </g>
+</svg>

@@ -7,6 +7,12 @@ import App from './App.tsx'
 import { AuthProvider } from './auth.tsx'
 import { ThemeProvider } from './theme.tsx'
 
+// Register the service worker (public/sw.js) so phones offer "Install app".
+// Browsers only allow this on HTTPS sites (and on localhost for development).
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* BrowserRouter lets us have real URLs like /games/42 without reloading the page. */}
