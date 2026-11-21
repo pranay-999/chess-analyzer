@@ -1,0 +1,44 @@
+# Spring Boot reads this file at startup. Every key here configures some part
+# of Spring "auto-configuration" (Spring sees the Postgres driver + these
+# settings and builds the database connection pool for us).
+
+spring:
+  application:
+    name: chess-analyzer
+
+  # Where the database is (matches docker-compose.yml)
+  datasource:
+    url: jdbc:postgresql://localhost:5433/chess
+    username: chess
+    password: chess
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate only CHECKS that our Java entities
+      # match the tables; it never creates/changes tables itself.
+      ddl-auto: validate
+    open-in-view: false   # good practice: DB access only happens inside services
+
+  flyway:
+    enabled: true          # runs src/main/resources/db/migration/V*.sql on startup
+
+  # Thread pool used by @Async methods (game analysis). At most 2 analyses run at
+  # once; more requests wait in the queue so Stockfish doesn't take over the CPU.
+  task:
+    execution:
+      thread-name-prefix: analysis-
+      pool:
+        core-size: 2
+        max-size: 2
+
+server:
+  port: 8080
+
+# Our own settings (not Spring ones), read by engine/EngineFactory.
+stockfish:
+  path: /usr/games/stockfish
+  threads: 2          # CPU threads per Stockfish process
+
+my-engine:            # our own engine (Phase 6)
+  max-depth: 5        # deeper requests are capped to this
+  time-limit-ms: 1500 # max thinking time per position; it answers with the last finished depth
