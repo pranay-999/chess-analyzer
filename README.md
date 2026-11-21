@@ -25,6 +25,13 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Play against bots** with clocks: 7 levels, from my own engine at depth 1 to Stockfish at full
   skill. The server validates every move and detects checkmate, stalemate, repetition, the 50-move
   rule and insufficient material; finished games open in the analyser with one click.
+- **Import from anywhere**: Chess.com and Lichess **game links**, PGN or FEN. Only **finished** games are
+  accepted (fair play), and the server checks this with each site.
+- **Phone-ready**: installable web app (PWA). On **Android** it appears in the Chess.com app's **Share** menu;
+  on **iPhone**, a one-tap *Paste from clipboard*.
+- **Browser extension** (Chrome, Edge, Firefox): an *Analyse* button on Chess.com and Lichess game pages, plus
+  right-click → analyse any selected PGN/FEN (`extension/`).
+- **Themes**: Light, Dark, Wood, Navy or Auto, plus 5 board colours.
 - **Analysis board**: paste any **PGN** (a whole game from any site) or **FEN** (a position)
   and get the same replay, analysis and exploration tools.
 - **Explore variations**: drag pieces to try your own moves. Legality is checked by
@@ -83,6 +90,10 @@ docker compose --profile app up --build
 
 Open http://localhost:8080, enter a Chess.com username and click **Sync from Chess.com**.
 (The image bundles Stockfish. The first build takes a few minutes.)
+
+## Deploy (HTTPS, for phones and a live demo)
+
+`render.yaml` + the `prod` profile deploy the app and a PostgreSQL database on Render. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## Development setup
 

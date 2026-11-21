@@ -1,0 +1,32 @@
+# Render "Blueprint": describes the whole deployment, so Render can create it in one click
+# (Dashboard → New → Blueprint → pick this GitHub repo). See docs/DEPLOY.md.
+
+services:
+  - type: web
+    name: chess-analyzer
+    runtime: docker                  # builds our Dockerfile (React + Spring Boot + Stockfish)
+    dockerfilePath: ./Dockerfile
+    plan: free                       # free: sleeps after 15 min idle; "starter" stays awake and is faster
+    healthCheckPath: /api/health     # Render waits for this to answer 200 before switching traffic
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod                  # loads application-prod.yml
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=75 -XX:+UseSerialGC   # fit the JVM into a small container
+      # Database connection, filled in automatically from the database below:
+      - key: DB_HOST
+        fromDatabase: { name: chess-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: chess-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: chess-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: chess-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: chess-db, property: password }
+
+databases:
+  - name: chess-db
+    plan: free                       # note: Render's free Postgres expires after 30 days (see DEPLOY.md)
+    databaseName: chess
+    user: chess

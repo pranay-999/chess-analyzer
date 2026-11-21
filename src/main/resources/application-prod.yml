@@ -1,0 +1,30 @@
+# Settings for the deployed app. Active when SPRING_PROFILES_ACTIVE=prod (render.yaml sets it).
+# Spring loads application.yml first, then this file on top: only what changes is listed here.
+# ${NAME} = an environment variable, filled in by the hosting service (never commit real secrets).
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  task:
+    execution:
+      pool:              # small servers: one analysis at a time
+        core-size: 1
+        max-size: 1
+
+server:
+  port: ${PORT:8080}                     # the host tells us which port to listen on
+  # The host's proxy does HTTPS and forwards plain HTTP to us with "X-Forwarded-Proto: https".
+  # Trusting that header lets Spring know the real address is https:// (correct redirects, secure cookies).
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: true                     # session cookie only ever sent over HTTPS
+
+stockfish:
+  threads: 1
+
+my-engine:
+  time-limit-ms: 1000
