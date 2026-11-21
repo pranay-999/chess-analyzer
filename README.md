@@ -19,6 +19,9 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Two engines**: Stockfish 17 (over the UCI protocol) and **my own engine**
   (negamax, alpha-beta, quiescence search, MVV-LVA ordering, piece-square tables),
   side by side on the same game.
+- **Play against bots** with clocks: 7 levels, from my own engine at depth 1 to Stockfish at full
+  skill. The server validates every move and detects checkmate, stalemate, repetition, the 50-move
+  rule and insufficient material; finished games open in the analyser with one click.
 - **Analysis board**: paste any **PGN** (a whole game from any site) or **FEN** (a position)
   and get the same replay, analysis and exploration tools.
 - **Explore variations**: drag pieces to try your own moves. Legality is checked by
@@ -93,6 +96,8 @@ cd frontend && npm install && npm run dev   # UI with hot reload on :5173 (proxi
 | `POST` | `/api/games/import` | Store a pasted PGN or FEN (`{"text", "playerColor"}`) → 201 Created |
 | `POST` | `/api/games/{id}/analysis?engine=stockfish&depth=16` | Start an analysis (202 Accepted) |
 | `GET` | `/api/games/{id}/analysis?engine=my-engine` | Progress, or results when done |
+| `GET` | `/api/bots` | Bot levels |
+| `POST` | `/api/bots/move` | `{level, moves}` → bot's reply + game status |
 | `GET` | `/api/positions/moves?fen=…` | Legal moves of any position |
 | `GET` | `/api/positions/eval?fen=…&engine=stockfish&depth=14` | Live engine evaluation |
 

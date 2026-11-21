@@ -30,6 +30,14 @@ public class StockfishEngine implements Engine {
     private final Writer toEngine;
 
     public StockfishEngine(String executablePath, int threads) {
+        this(executablePath, threads, 20);
+    }
+
+    /**
+     * @param skillLevel 0 (weakest) .. 20 (full strength). Below 20 Stockfish deliberately
+     *                   picks weaker moves now and then, which is how its "bots" get easier.
+     */
+    public StockfishEngine(String executablePath, int threads, int skillLevel) {
         try {
             process = new ProcessBuilder(executablePath).redirectErrorStream(true).start();
         } catch (IOException e) {
@@ -40,6 +48,7 @@ public class StockfishEngine implements Engine {
         send("uci");
         waitFor("uciok");
         send("setoption name Threads value " + threads);
+        send("setoption name Skill Level value " + skillLevel);
         send("isready");
         waitFor("readyok");
     }

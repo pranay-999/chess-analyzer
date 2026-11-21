@@ -85,6 +85,25 @@ export interface PositionEval {
   depth: number
 }
 
+export type GameStatus =
+  | 'ONGOING' | 'CHECKMATE' | 'STALEMATE' | 'THREEFOLD_REPETITION' | 'FIFTY_MOVE_RULE' | 'INSUFFICIENT_MATERIAL'
+
+export interface BotLevel {
+  level: number
+  name: string
+  description: string
+  stockfishSkill: number | null
+  depth: number
+  approxElo: number
+}
+
+export interface BotReply {
+  move: LegalMove | null // null when your move already ended the game
+  status: GameStatus
+  result: string // "1-0", "0-1", "1/2-1/2" or "*"
+  winner: Color | null
+}
+
 export interface SyncResult {
   username: string
   monthsFetched: number
@@ -154,6 +173,16 @@ export const api = {
   /** Ask an engine about any position, e.g. one you reached by moving pieces yourself. */
   evaluatePosition: (fen: string, engine: EngineName, depth: number) =>
     request<PositionEval>(`/api/positions/eval?fen=${encodeURIComponent(fen)}&engine=${engine}&depth=${depth}`),
+
+  listBots: () => request<BotLevel[]>('/api/bots'),
+
+  /** Send every move so far; the server checks them and answers with the bot's move. */
+  botMove: (level: number, moves: string[]) =>
+    request<BotReply>('/api/bots/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level, moves }),
+    }),
 
   startAnalysis: (gameId: number, engine: EngineName, depth: number) =>
     request<Analysis>(`/api/games/${gameId}/analysis?engine=${engine}&depth=${depth}`, { method: 'POST' }),

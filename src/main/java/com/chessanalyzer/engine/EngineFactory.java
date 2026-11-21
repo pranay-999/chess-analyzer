@@ -44,6 +44,16 @@ public class EngineFactory {
         };
     }
 
+    /** A weakened Stockfish for bots (skill 0..20). */
+    public Engine openStockfish(int skillLevel) {
+        return new StockfishEngine(stockfishPath, 1, skillLevel);   // 1 thread: bots don't need full power
+    }
+
+    /** Our own engine with its own depth limit (bots use small depths to play weaker). */
+    public Engine openMyEngine(int maxDepth) {
+        return new MyEngine(maxDepth, myEngineTimeLimitMs);
+    }
+
     /** Deepest search we allow for an engine. Also rejects unknown names (-> HTTP 400). */
     public int maxDepth(String name) {
         return switch (name) {
