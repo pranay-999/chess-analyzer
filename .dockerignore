@@ -1,0 +1,8 @@
+# Files Docker should NOT send into the build (faster builds, no stale outputs)
+.git
+target
+frontend/node_modules
+src/main/resources/static
+*.log
+.idea
+.vscode

@@ -1,5 +1,9 @@
-# Starts a Postgres database inside Docker, just for this project.
-# Run:  docker compose up -d      Stop:  docker compose down
+# Two ways to use this file:
+#
+#   docker compose up -d                      -> only Postgres (for development: run the app with mvn)
+#   docker compose --profile app up --build   -> Postgres + the whole app in Docker, on http://localhost:8080
+#
+# Stop:  docker compose --profile app down
 # Your local Postgres already uses port 5432, so this one is exposed on 5433.
 services:
   postgres:
@@ -13,6 +17,24 @@ services:
       - "5433:5432"          # host port 5433 -> container port 5432
     volumes:
       - chess-data:/var/lib/postgresql/data   # keeps data when the container restarts
+    healthcheck:             # lets the app wait until the database really accepts connections
+      test: ["CMD", "pg_isready", "-U", "chess"]
+      interval: 3s
+      retries: 20
+
+  app:
+    profiles: ["app"]        # only started with --profile app
+    build: .                 # uses the Dockerfile in this folder
+    container_name: chess-app
+    ports:
+      - "${APP_PORT:-8080}:8080"   # change with e.g. APP_PORT=9090 if 8080 is busy
+    environment:
+      # Inside Docker's network the database is reachable by its service name, on its normal port.
+      # Environment variables override application.yml (SPRING_DATASOURCE_URL = spring.datasource.url).
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chess
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   chess-data:
