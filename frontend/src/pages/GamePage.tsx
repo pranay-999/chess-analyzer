@@ -298,8 +298,11 @@ export default function GamePage() {
             <div>
               <strong>{summary.white} vs {summary.black}</strong>
               <div className="muted small">
-                {summary.result} · {summary.timeClass} · {summary.openingEco ?? '—'} · {new Date(summary.playedAt).toLocaleDateString()}
-                {' · '}<a href={game.chesscomUrl} target="_blank" rel="noopener noreferrer">Chess.com ↗</a>
+                {/* Only show the parts we know (a pasted FEN has no result, time control or opening). */}
+                {[summary.result !== '*' && summary.result, summary.timeClass, summary.openingEco,
+                  new Date(summary.playedAt).toLocaleDateString(), summary.source === 'PASTED' && 'pasted']
+                  .filter(Boolean).join(' · ')}
+                {game.chesscomUrl && <>{' · '}<a href={game.chesscomUrl} target="_blank" rel="noopener noreferrer">Chess.com ↗</a></>}
               </div>
             </div>
           </div>
@@ -311,13 +314,18 @@ export default function GamePage() {
                            onExit={() => setVariation(null)} />
           : <MoveInsight ply={ply} game={game} evaluation={currentEval} nextBest={nextBest} />}
 
-        <div className="card compact">
-          <MoveList moves={moves} evals={evalByPly} currentPly={ply} onSelect={go} />
-        </div>
+        {total > 0 && (
+          <div className="card compact">
+            <MoveList moves={moves} evals={evalByPly} currentPly={ply} onSelect={go} />
+          </div>
+        )}
 
-        <AnalysisCard analysis={analysis} running={running} starting={starting}
-                      engine={engine} setEngine={chooseEngine} depth={depth}
-                      setDepth={setDepth} onStart={startAnalysis} startFen={startFen} />
+        {/* A pasted FEN has no moves to analyse; drag pieces to explore it instead. */}
+        {total > 0 && (
+          <AnalysisCard analysis={analysis} running={running} starting={starting}
+                        engine={engine} setEngine={chooseEngine} depth={depth}
+                        setDepth={setDepth} onStart={startAnalysis} startFen={startFen} />
+        )}
       </aside>
     </div>
   )
@@ -348,10 +356,13 @@ function MoveInsight({ ply, game, evaluation, nextBest }: {
   nextBest: MoveEval | undefined
 }) {
   if (ply === 0) {
+    const noMoves = game.moves.length === 0   // a pasted FEN
     return (
       <div className="card compact insight">
-        <strong>Starting position</strong>
-        <span className="muted small">Use ← → or click a move.</span>
+        <strong>{noMoves ? 'Position from FEN' : 'Starting position'}</strong>
+        <span className="muted small">
+          {noMoves ? 'Drag a piece to start exploring. Stockfish evaluates every move you try.' : 'Use ← → or click a move.'}
+        </span>
       </div>
     )
   }

@@ -5,6 +5,8 @@ import com.chessanalyzer.chess.Color;
 import com.chessanalyzer.game.GameDetail;
 import com.chessanalyzer.game.GameNotFoundException;
 import com.chessanalyzer.game.GameService;
+import com.chessanalyzer.game.GameSource;
+import com.chessanalyzer.game.PastedGameService;
 import com.chessanalyzer.game.GameSummary;
 import com.chessanalyzer.game.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,11 +34,11 @@ class GameControllerTest {
     private MockMvc mvc;
 
     private static final GameSummary SUMMARY = new GameSummary(7L, "alice", "bob", 1500, 1480,
-            Color.WHITE, "1-0", "WIN", "blitz", "C20", Instant.parse("2026-11-19T10:00:00Z"));
+            Color.WHITE, "1-0", "WIN", "blitz", "C20", Instant.parse("2026-11-19T10:00:00Z"), GameSource.CHESSCOM);
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new GameController(gameService))
+        mvc = MockMvcBuilders.standaloneSetup(new GameController(gameService, mock(PastedGameService.class)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

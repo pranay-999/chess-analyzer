@@ -13,12 +13,12 @@ import java.time.Instant;
  */
 public record GameSummary(long id, String white, String black, Integer whiteRating, Integer blackRating,
                           Color playerColor, String result, String outcome, String timeClass,
-                          String openingEco, Instant playedAt) {
+                          String openingEco, Instant playedAt, GameSource source) {
 
     public static GameSummary from(Game g) {
         return new GameSummary(g.getId(), g.getWhite(), g.getBlack(), g.getWhiteRating(), g.getBlackRating(),
                 g.getPlayerColor(), g.getResult(), outcome(g.getResult(), g.getPlayerColor()),
-                g.getTimeClass(), g.getOpeningEco(), g.getPlayedAt());
+                g.getTimeClass(), g.getOpeningEco(), g.getPlayedAt(), g.getSource());
     }
 
     static String outcome(String result, Color playerColor) {

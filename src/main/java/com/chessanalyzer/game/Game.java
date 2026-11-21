@@ -34,14 +34,18 @@ public class Game {
     /**
      * Many games belong to one player. In the table this is the player_id foreign key;
      * in Java it's a real Player object. LAZY = don't load the player from the DB
-     * until someone actually calls getPlayer().
+     * until someone actually calls getPlayer(). Null for pasted games.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id")
     private Player player;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)          // null for pasted games
     private String chesscomUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private GameSource source = GameSource.CHESSCOM;
 
     @Column(nullable = false, columnDefinition = "text")
     private String pgn;
@@ -98,6 +102,15 @@ public class Game {
         this.playedAt = playedAt;
     }
 
+    /** A game pasted as PGN/FEN: no Chess.com player or URL. A static "factory method" with a clear name. */
+    public static Game pasted(String pgn, String white, String black, Integer whiteRating, Integer blackRating,
+                              Color playerColor, String result, String openingEco, Instant playedAt) {
+        Game game = new Game(null, null, pgn, white, black, whiteRating, blackRating,
+                playerColor, result, null, openingEco, playedAt);
+        game.source = GameSource.PASTED;
+        return game;
+    }
+
     /** Keeps both sides of the relationship in sync (the list here, and move.game). */
     public void addMove(GameMove move) {
         moves.add(move);
@@ -107,6 +120,7 @@ public class Game {
     public Long getId() { return id; }
     public Player getPlayer() { return player; }
     public String getChesscomUrl() { return chesscomUrl; }
+    public GameSource getSource() { return source; }
     public String getPgn() { return pgn; }
     public String getWhite() { return white; }
     public String getBlack() { return black; }

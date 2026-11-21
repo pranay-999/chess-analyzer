@@ -28,6 +28,9 @@ class BoardTest {
         assertThrows(IllegalArgumentException.class, () -> Board.fromFen("not a fen"));
         assertThrows(IllegalArgumentException.class,
                 () -> Board.fromFen("rnbqkbnr/ppppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+        // no black king / two white kings
+        assertThrows(IllegalArgumentException.class, () -> Board.fromFen("8/8/8/8/8/8/8/K7 w - - 0 1"));
+        assertThrows(IllegalArgumentException.class, () -> Board.fromFen("k7/8/8/8/8/8/8/KK6 w - - 0 1"));
     }
 
     @Test

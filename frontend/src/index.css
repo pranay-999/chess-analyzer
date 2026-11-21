@@ -47,7 +47,26 @@ h2 { font-size: 18px; }
   display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 7px;
   background: var(--accent-dark); font-size: 20px;
 }
-.topbar-note { color: var(--muted); font-size: 13px; }
+.topnav { display: flex; gap: 4px; }
+.topnav a {
+  color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 8px; font-weight: 500;
+}
+.topnav a:hover { color: var(--text); background: var(--panel-2); }
+.topnav a.active { color: var(--text); background: var(--panel-2); }
+
+/* ---------- analysis board (paste) ---------- */
+.paste-box {
+  width: 100%; font: 13px/1.5 ui-monospace, 'DejaVu Sans Mono', monospace; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; resize: vertical;
+}
+.paste-box:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.paste-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.spacer { flex: 1; }
+.segmented { display: flex; align-items: center; gap: 4px; background: var(--bg); padding: 3px 3px 3px 10px; border-radius: 8px; }
+.seg { font: inherit; font-size: 14px; color: var(--muted); background: none; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.seg.active { background: var(--panel-2); color: var(--text); font-weight: 600; }
+.link-btn { font: inherit; color: var(--accent); background: none; border: none; padding: 0 8px 0 0; cursor: pointer; text-decoration: underline; }
+.examples { margin-top: 14px; }
 .container { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
 
 /* ---------- building blocks ---------- */
@@ -78,6 +97,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   color: var(--muted); text-transform: capitalize;
 }
 .tag.you { background: var(--accent-dark); color: #fff; }
+.tag.plain { text-transform: none; }
 
 .spinner {
   width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted); border-top-color: transparent;
@@ -204,7 +224,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .summary td:not(:first-child), .summary th:not(:first-child) { text-align: center; }
 
 @media (max-width: 640px) {
-  .topbar-note { display: none; }
+  .topbar { padding: 10px 12px; }
+  .brand { font-size: 16px; }
+  .topnav a { padding: 6px 8px; font-size: 14px; }
   .container { padding: 12px 12px 32px; }
   .card { padding: 14px; }
   h1 { font-size: 22px; }

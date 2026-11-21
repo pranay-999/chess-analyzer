@@ -7,6 +7,7 @@ import com.chessanalyzer.chesscom.ChessComClient;
 import com.chessanalyzer.chesscom.ChessComGame;
 import com.chessanalyzer.chesscom.ChessComGame.ChessComPlayer;
 import com.chessanalyzer.game.GameDetail;
+import com.chessanalyzer.game.GameSource;
 import com.chessanalyzer.game.GameSummary;
 import com.chessanalyzer.game.PageResponse;
 import com.chessanalyzer.game.SyncResult;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.HttpClientErrorException;
@@ -26,10 +28,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
@@ -115,11 +119,59 @@ class AppIntegrationTest {
     }
 
     @Test
+    void pastedPgnBecomesAGameWithMoves() {
+        String pgn = """
+                [White "Me"]
+                [Black "Friend"]
+                [Result "0-1"]
+                [WhiteElo "1200"]
+
+                1. f3 e5 2. g4 Qh4# 0-1
+                """;
+        ResponseEntity<GameSummary> created = http.post().uri("/api/games/import")
+                .body(Map.of("text", pgn, "playerColor", "WHITE"))
+                .retrieve().toEntity(GameSummary.class);
+        assertEquals(HttpStatus.CREATED, created.getStatusCode());
+        GameSummary summary = created.getBody();
+        assertEquals(GameSource.PASTED, summary.source());
+        assertEquals("LOSS", summary.outcome());
+        assertEquals(1200, summary.whiteRating());
+
+        GameDetail game = http.get().uri("/api/games/{id}", summary.id()).retrieve().body(GameDetail.class);
+        assertEquals(4, game.moves().size());
+        assertEquals(null, game.chesscomUrl());
+    }
+
+    @Test
+    void pastedFenBecomesAGameStartingThere() {
+        String fen = "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1";
+        GameSummary summary = http.post().uri("/api/games/import")
+                .body(Map.of("text", fen)).retrieve().body(GameSummary.class);
+        GameDetail game = http.get().uri("/api/games/{id}", summary.id()).retrieve().body(GameDetail.class);
+        assertEquals(fen, game.startFen());
+        assertEquals(0, game.moves().size());
+    }
+
+    @Test
+    void badPastesGiveReadable400s() {
+        HttpClientErrorException illegal = assertThrows(HttpClientErrorException.class,
+                () -> http.post().uri("/api/games/import").body(Map.of("text", "1. e4 e5 2. Ke3"))
+                        .retrieve().body(String.class));
+        assertEquals(HttpStatus.BAD_REQUEST, illegal.getStatusCode());
+        assertTrue(illegal.getResponseBodyAs(ProblemDetail.class).getDetail().startsWith("Illegal move 'Ke3'"));
+
+        HttpClientErrorException noKing = assertThrows(HttpClientErrorException.class,
+                () -> http.post().uri("/api/games/import").body(Map.of("text", "8/8/8/8/8/8/8/K7 w - - 0 1"))
+                        .retrieve().body(String.class));
+        assertEquals(HttpStatus.BAD_REQUEST, noKing.getStatusCode());
+    }
+
+    @Test
     void errorsAreProblemDetailJson() {
         HttpClientErrorException notFound = assertThrows(HttpClientErrorException.class,
                 () -> http.get().uri("/api/games/999999").retrieve().body(String.class));
         assertEquals(HttpStatus.NOT_FOUND, notFound.getStatusCode());
-        assertEquals("Game not found: 999999", notFound.getResponseBodyAs(org.springframework.http.ProblemDetail.class).getDetail());
+        assertEquals("Game not found: 999999", notFound.getResponseBodyAs(ProblemDetail.class).getDetail());
 
         HttpClientErrorException badEngine = assertThrows(HttpClientErrorException.class,
                 () -> http.post().uri("/api/games/1/analysis?engine=nope").retrieve().body(String.class));

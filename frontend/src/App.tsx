@@ -1,4 +1,5 @@
-import { Link, Route, Routes, useParams } from 'react-router'
+import { Link, NavLink, Route, Routes, useParams } from 'react-router'
+import AnalyzePage from './pages/AnalyzePage'
 import GamePage from './pages/GamePage'
 import HomePage from './pages/HomePage'
 
@@ -10,11 +11,15 @@ export default function App() {
         <Link to="/" className="brand">
           <span className="brand-icon">♞</span> Chess Analyzer
         </Link>
-        <span className="topbar-note">Chess.com games · Stockfish analysis</span>
+        <nav className="topnav">
+          <NavLink to="/" end>My games</NavLink>
+          <NavLink to="/analyze">Analysis board</NavLink>
+        </nav>
       </header>
       <main className="container">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/analyze" element={<AnalyzePage />} />
           <Route path="/games/:id" element={<GameRoute />} />
           <Route path="*" element={<p className="muted">Page not found.</p>} />
         </Routes>

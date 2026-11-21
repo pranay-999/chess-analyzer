@@ -72,6 +72,17 @@ public final class Board {
             }
         }
 
+        // Everything else (move generation, engines) assumes exactly one king per side.
+        // Stockfish can even crash on a position without kings, so reject it here, at the door.
+        for (Color color : Color.values()) {
+            Piece king = Piece.of(color, PieceType.KING);
+            long count = java.util.Arrays.stream(board.squares).filter(p -> p == king).count();
+            if (count != 1) {
+                throw new IllegalArgumentException("FEN must have exactly one " + color.name().toLowerCase()
+                        + " king (found " + count + "): " + fen);
+            }
+        }
+
         board.sideToMove = switch (parts[1]) {
             case "w" -> Color.WHITE;
             case "b" -> Color.BLACK;

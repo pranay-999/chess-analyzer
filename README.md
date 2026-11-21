@@ -19,6 +19,8 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Two engines**: Stockfish 17 (over the UCI protocol) and **my own engine**
   (negamax, alpha-beta, quiescence search, MVV-LVA ordering, piece-square tables),
   side by side on the same game.
+- **Analysis board**: paste any **PGN** (a whole game from any site) or **FEN** (a position)
+  and get the same replay, analysis and exploration tools.
 - **Explore variations**: drag pieces to try your own moves. Legality is checked by
   the Java rules engine, and Stockfish evaluates each position live.
 - **Chess rules implemented from scratch**: move generation, FEN, SAN and PGN,
@@ -88,6 +90,7 @@ cd frontend && npm install && npm run dev   # UI with hot reload on :5173 (proxi
 | `POST` | `/api/players/{username}/sync?months=N` | Import games from Chess.com |
 | `GET` | `/api/players/{username}/games?page=0&size=20` | Paged list, newest first |
 | `GET` | `/api/games/{id}` | Game with every move and position (FEN) |
+| `POST` | `/api/games/import` | Store a pasted PGN or FEN (`{"text", "playerColor"}`) → 201 Created |
 | `POST` | `/api/games/{id}/analysis?engine=stockfish&depth=16` | Start an analysis (202 Accepted) |
 | `GET` | `/api/games/{id}/analysis?engine=my-engine` | Progress, or results when done |
 | `GET` | `/api/positions/moves?fen=…` | Legal moves of any position |

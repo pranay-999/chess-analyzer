@@ -21,6 +21,7 @@ export interface GameSummary {
   timeClass: string | null
   openingEco: string | null
   playedAt: string // ISO date, e.g. "2026-11-19T01:35:02Z"
+  source: 'CHESSCOM' | 'PASTED'
 }
 
 export interface Page<T> {
@@ -40,7 +41,7 @@ export interface MoveView {
 
 export interface GameDetail {
   summary: GameSummary
-  chesscomUrl: string
+  chesscomUrl: string | null // null for pasted games
   startFen: string
   moves: MoveView[]
 }
@@ -127,6 +128,14 @@ export const api = {
     request<SyncResult>(`/api/players/${user(username)}/sync`, { method: 'POST' }),
 
   getGame: (id: string) => request<GameDetail>(`/api/games/${encodeURIComponent(id)}`),
+
+  /** Store a pasted PGN or FEN as a game; returns it so we can open /games/{id}. */
+  importGame: (text: string, playerColor: Color) =>
+    request<GameSummary>('/api/games/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, // tells Spring the body is JSON (@RequestBody)
+      body: JSON.stringify({ text, playerColor }),
+    }),
 
   /** Returns null when the game has never been analysed by this engine (the API answers 404). */
   getAnalysis: async (gameId: number, engine: EngineName): Promise<Analysis | null> => {
