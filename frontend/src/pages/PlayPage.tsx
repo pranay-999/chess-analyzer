@@ -5,6 +5,7 @@ import { api, type BotLevel, type Color, type GameStatus, type LegalMove } from 
 import { formatClock, newClock, pressClock, remaining, TIME_CONTROLS, type Clock, type TimeControl } from '../clock'
 import MoveList from '../components/MoveList'
 import { useTheme } from '../theme'
+import { useBoardInput } from '../boardInput'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -65,6 +66,14 @@ export default function PlayPage() {
   const playing = game !== null && game.end === null
   const yourTurn = playing && sideToMove === game.you
   const botTurn = playing && sideToMove !== game.you
+
+  // Drag or tap to move; only on your turn, and only moves from the server's legal list.
+  const input = useBoardInput({
+    fen,
+    legal: legal && legal.fen === fen ? legal.moves : null,
+    enabled: yourTurn,
+    onMove: (move) => setGame((g) => (g ? addMove(g, move, Date.now()) : g)),
+  })
 
   // Load the bot list once.
   useEffect(() => {
@@ -134,15 +143,6 @@ export default function PlayPage() {
     setGame({ id: t, you, bot, moves: [], clock: newClock(timeControl, t), end: null })
   }
 
-  function onPieceDrop({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean {
-    if (!yourTurn || !targetSquare || legal?.fen !== fen) return false
-    const candidates = legal.moves.filter((m) => m.uci.startsWith(sourceSquare + targetSquare))
-    if (candidates.length === 0) return false
-    const move = candidates.find((m) => m.uci.length === 4 || m.uci.endsWith('q'))!   // promotions: queen
-    setGame((g) => (g ? addMove(g, move, Date.now()) : g))
-    return true
-  }
-
   function resign() {
     setGame((g) => (g && !g.end ? { ...g, end: { result: lossFor(g.you), reason: 'resignation' } } : g))
   }
@@ -165,7 +165,6 @@ export default function PlayPage() {
   const squareStyles: Record<string, CSSProperties> = lastMove
     ? { [lastMove.slice(0, 2)]: { background: 'rgba(255, 214, 79, 0.55)' }, [lastMove.slice(2, 4)]: { background: 'rgba(255, 214, 79, 0.55)' } }
     : {}
-  const yourChar = you === 'WHITE' ? 'w' : 'b'
 
   return (
     <div className="game-layout">
@@ -178,10 +177,11 @@ export default function PlayPage() {
             position: fen,
             boardOrientation: you === 'WHITE' ? 'white' : 'black',
             allowDragging: yourTurn,
-            canDragPiece: ({ piece }) => piece.pieceType[0] === yourChar,
-            onPieceDrop,
+            canDragPiece: input.canDragPiece,
+            onPieceDrop: input.onPieceDrop,
+            onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
             allowDrawingArrows: false,
-            squareStyles,
+            squareStyles: { ...squareStyles, ...input.inputStyles },
             animationDurationInMs: 150,
             ...boardColors,
           }} />
@@ -240,7 +240,7 @@ export default function PlayPage() {
         {playing && (
           <div className="card compact">
             <strong>vs {game.bot.name} <span className="muted small">~{game.bot.approxElo}</span></strong>
-            <span className="muted small">{yourTurn ? 'Your move: drag a piece.' : `${game.bot.name} is thinking…`}</span>
+            <span className="muted small">{yourTurn ? 'Your move: drag or tap a piece.' : `${game.bot.name} is thinking…`}</span>
             <button className="btn" onClick={resign}>⚑ Resign</button>
           </div>
         )}

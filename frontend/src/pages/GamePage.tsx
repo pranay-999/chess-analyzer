@@ -11,6 +11,7 @@ import MoveList from '../components/MoveList'
 import VariationCard from '../components/VariationCard'
 import { asMoveEval, playInVariation, stepState, type Variation } from '../variation'
 import { useTheme } from '../theme'
+import { useBoardInput } from '../boardInput'
 
 /** The two engines the backend offers, with sensible depth choices for each. */
 const ENGINES: Record<EngineName, { label: string; depths: { value: number; label: string }[]; defaultDepth: number }> = {
@@ -64,6 +65,14 @@ export default function GamePage() {
   const mainFen = game ? (ply === 0 ? game.startFen : game.moves[ply - 1].fenAfter) : null
   const exploringFen = variation && variation.index > 0 ? variation.moves[variation.index - 1].fenAfter : null
   const boardFen = exploringFen ?? mainFen
+
+  // Drag or tap to move (hooks must run on every render, so this sits above the early returns).
+  const input = useBoardInput({
+    fen: boardFen ?? '',
+    legal: legal && legal.fen === boardFen ? legal.moves : null,
+    enabled: game !== null,
+    onMove: (move) => playMove(move),
+  })
 
   // 1. Load the game. (App gives this page key={id}, so a different game id
   //    creates a brand-new GamePage with fresh state.)
@@ -220,29 +229,16 @@ export default function GamePage() {
   const showBar = exploring ? variationEval !== null : hasEvals
   const barPly = exploring ? variationPly : ply
 
-  /** Only the side to move may pick up a piece ("wP" = white pawn, FEN field 2 = "w" or "b"). */
-  const sideToMove = fen.split(' ')[1]
-  const canDragPiece = ({ piece }: { piece: { pieceType: string } }) => piece.pieceType[0] === sideToMove
-
-  /**
-   * Called by the board when you drop a piece. Return true = keep it there, false = snap back.
-   * We check it against the legal moves the backend gave us for this exact position.
-   */
-  function onPieceDrop({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean {
-    if (!targetSquare || legal?.fen !== fen) return false
-    const candidates = legal.moves.filter((m) => m.uci.startsWith(sourceSquare + targetSquare))
-    if (candidates.length === 0) return false                                  // illegal move
-    const move = candidates.find((m) => m.uci.length === 4 || m.uci.endsWith('q'))! // promotions: always a queen
-
+  /** A move you dragged or tapped (already checked against the legal moves by useBoardInput). */
+  function playMove(move: LegalMove) {
     // Played the same move as the real game, from a game position? Just follow the game.
     const atGamePosition = !variation || variation.index === 0
     const gamePly = variation?.fromPly ?? ply
     if (atGamePosition && moves[gamePly]?.uci === move.uci) {
       go(gamePly + 1)
-      return true
+      return
     }
     setVariation(playInVariation(variation, ply, move))
-    return true
   }
 
   const bottom: Color = flipped ? 'BLACK' : 'WHITE'
@@ -264,11 +260,12 @@ export default function GamePage() {
               position: fen,
               boardOrientation: flipped ? 'black' : 'white',
               allowDragging: true,
-              canDragPiece,
-              onPieceDrop,
+              canDragPiece: input.canDragPiece,
+              onPieceDrop: input.onPieceDrop,
+              onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
               allowDrawingArrows: false,
               arrows,
-              squareStyles,
+              squareStyles: { ...squareStyles, ...input.inputStyles },
               animationDurationInMs: 150,
               ...boardColors,
             }} />
@@ -286,7 +283,7 @@ export default function GamePage() {
           <button className="btn icon" onClick={() => go(total)} title="End (End)">⏭</button>
           <button className="btn icon" onClick={() => setFlipped((f) => !f)} title="Flip board">⇅</button>
         </div>
-        {!variation && <p className="hint muted small">Tip: drag a piece to try your own move from this position.</p>}
+        {!variation && <p className="hint muted small">Tip: drag a piece, or tap it and then tap a square, to try your own move.</p>}
 
         {hasEvals && <EvalGraph evals={evals} startFen={startFen} currentPly={ply} onSelect={go} />}
       </div>

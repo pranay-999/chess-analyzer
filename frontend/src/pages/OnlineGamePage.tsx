@@ -7,6 +7,7 @@ import { formatClock, timeLabel } from '../clock'
 import MoveList from '../components/MoveList'
 import { useTopic } from '../live'
 import { useTheme } from '../theme'
+import { useBoardInput } from '../boardInput'
 
 /**
  * "/online/:id" — a live game. The SERVER owns the game: we send a move with a POST,
@@ -59,20 +60,24 @@ export default function OnlineGamePage() {
     return () => clearInterval(timer)
   }, [ticking])
 
+  // Drag or tap to move: only on your turn (hooks must run before the early returns below).
+  const input = useBoardInput({
+    fen: game?.fen ?? '',
+    legal: legal && legal.fen === game?.fen ? legal.moves : null,
+    enabled: yourTurn,
+    onMove: (move) => sendMove(move),
+  })
+
   if (error && !game) return <p className="error">{error} <Link to="/online">Back to the lobby</Link></p>
   if (!game || !state) return <p className="muted">Loading game…</p>
 
-  function onPieceDrop({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean {
-    if (!yourTurn || !targetSquare || legal?.fen !== game!.fen) return false
-    const candidates = legal.moves.filter((m) => m.uci.startsWith(sourceSquare + targetSquare))
-    if (candidates.length === 0) return false
-    const move = candidates.find((m) => m.uci.length === 4 || m.uci.endsWith('q'))!
+  /** Sends your move to the server; the new state comes back (and to your opponent via the WebSocket). */
+  function sendMove(move: LegalMove) {
     api.moveOnline(game!.id, move.uci).then(receive).catch((e: Error) => {
       setError(e.message) // e.g. "It's not your turn" or you just ran out of time
       setBoardKey((k) => k + 1) // put the piece back
       reload()
     })
-    return true
   }
 
   async function act(action: () => Promise<OnlineGame>) {
@@ -110,10 +115,11 @@ export default function OnlineGamePage() {
             position: game.fen,
             boardOrientation: bottom === 'WHITE' ? 'white' : 'black',
             allowDragging: yourTurn,
-            canDragPiece: ({ piece }) => piece.pieceType[0] === (you === 'WHITE' ? 'w' : 'b'),
-            onPieceDrop,
+            canDragPiece: input.canDragPiece,
+            onPieceDrop: input.onPieceDrop,
+            onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
             allowDrawingArrows: false,
-            squareStyles,
+            squareStyles: { ...squareStyles, ...input.inputStyles },
             animationDurationInMs: 150,
             ...boardColors,
           }} />
@@ -148,7 +154,7 @@ export default function OnlineGamePage() {
           {game.status === 'ACTIVE' && (
             <>
               <span className="muted small">
-                {you === null ? 'You are watching.' : yourTurn ? 'Your move: drag a piece.' : 'Waiting for your opponent…'}
+                {you === null ? 'You are watching.' : yourTurn ? 'Your move: drag or tap a piece.' : 'Waiting for your opponent…'}
               </span>
               {you && <button className="btn" onClick={() => act(() => api.resignOnline(game.id))}>⚑ Resign</button>}
             </>
