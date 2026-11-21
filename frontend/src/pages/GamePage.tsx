@@ -10,6 +10,7 @@ import EvalGraph from '../components/EvalGraph'
 import MoveList from '../components/MoveList'
 import VariationCard from '../components/VariationCard'
 import { asMoveEval, playInVariation, stepState, type Variation } from '../variation'
+import { useTheme } from '../theme'
 
 /** The two engines the backend offers, with sensible depth choices for each. */
 const ENGINES: Record<EngineName, { label: string; depths: { value: number; label: string }[]; defaultDepth: number }> = {
@@ -52,6 +53,7 @@ export default function GamePage() {
   const [engine, setEngine] = useState<EngineName>('stockfish')
   const [depth, setDepth] = useState(ENGINES.stockfish.defaultDepth)
   const [starting, setStarting] = useState(false)
+  const { boardColors } = useTheme() // square colours from the 🎨 menu
   // Your own line, if you've dragged a piece (null = following the real game).
   const [variation, setVariation] = useState<Variation | null>(null)
   // Legal moves / live engine eval, each remembered together with the FEN they belong to.
@@ -268,8 +270,7 @@ export default function GamePage() {
               arrows,
               squareStyles,
               animationDurationInMs: 150,
-              darkSquareStyle: { backgroundColor: '#779556' },
-              lightSquareStyle: { backgroundColor: '#ebecd0' },
+              ...boardColors,
             }} />
           </div>
         </div>

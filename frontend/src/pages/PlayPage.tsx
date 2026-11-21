@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { api, type BotLevel, type Color, type GameStatus, type LegalMove } from '../api'
 import { formatClock, newClock, pressClock, remaining, TIME_CONTROLS, type Clock, type TimeControl } from '../clock'
 import MoveList from '../components/MoveList'
+import { useTheme } from '../theme'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -57,6 +58,7 @@ export default function PlayPage() {
   const [now, setNow] = useState(() => Date.now())
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const { boardColors } = useTheme()
 
   const fen = game?.moves.at(-1)?.fenAfter ?? START_FEN
   const sideToMove = sideToMoveOf(fen)
@@ -181,8 +183,7 @@ export default function PlayPage() {
             allowDrawingArrows: false,
             squareStyles,
             animationDurationInMs: 150,
-            darkSquareStyle: { backgroundColor: '#779556' },
-            lightSquareStyle: { backgroundColor: '#ebecd0' },
+            ...boardColors,
           }} />
         </div>
         <PlayerRow name="You" color={you} game={game} sideToMove={sideToMove} now={now} thinking={false} />

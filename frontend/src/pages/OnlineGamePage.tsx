@@ -6,6 +6,7 @@ import { useAuth } from '../auth'
 import { formatClock, timeLabel } from '../clock'
 import MoveList from '../components/MoveList'
 import { useTopic } from '../live'
+import { useTheme } from '../theme'
 
 /**
  * "/online/:id" — a live game. The SERVER owns the game: we send a move with a POST,
@@ -23,6 +24,7 @@ export default function OnlineGamePage() {
   const [boardKey, setBoardKey] = useState(0) // bump to reset the board after a rejected move
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const { boardColors } = useTheme()
 
   const receive = useCallback((game: OnlineGame) => setState({ game, receivedAt: Date.now() }), [])
   const reload = useCallback(() => {
@@ -113,8 +115,7 @@ export default function OnlineGamePage() {
             allowDrawingArrows: false,
             squareStyles,
             animationDurationInMs: 150,
-            darkSquareStyle: { backgroundColor: '#779556' },
-            lightSquareStyle: { backgroundColor: '#ebecd0' },
+            ...boardColors,
           }} />
         </div>
         <PlayerRow color={bottom} game={game} ms={clockOf(bottom)} />

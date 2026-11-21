@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useParams } from 'react-router'
 import { useAuth } from './auth'
+import ThemePicker from './components/ThemePicker'
 import AnalyzePage from './pages/AnalyzePage'
 import GamePage from './pages/GamePage'
 import HomePage from './pages/HomePage'
@@ -25,6 +26,7 @@ export default function App() {
           <NavLink to="/analyze">Analysis board</NavLink>
         </nav>
         <div className="account">
+          <ThemePicker />
           {user ? (
             <>
               <span className="muted small">{user.username}</span>
