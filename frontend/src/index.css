@@ -54,6 +54,27 @@ h2 { font-size: 18px; }
 .topnav a:hover { color: var(--text); background: var(--panel-2); }
 .topnav a.active { color: var(--text); background: var(--panel-2); }
 
+/* ---------- accounts + online ---------- */
+.account { display: flex; align-items: center; gap: 8px; }
+.account .btn { text-decoration: none; }
+.auth-card { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.auth-tabs { align-self: flex-start; padding-left: 3px; }
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form label { display: flex; flex-direction: column; gap: 4px; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.online-layout { max-width: 720px; margin: 0 auto; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--muted); }
+.lobby-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border);
+  color: inherit; text-decoration: none;
+}
+a.lobby-row:hover { background: var(--panel-2); }
+.lobby-row .small-btn { margin-left: auto; }
+.invite { display: flex; gap: 6px; }
+.invite input { flex: 1; min-width: 0; font-size: 13px; }
+a.btn { text-decoration: none; justify-content: center; }
+
 /* ---------- play vs bot ---------- */
 .clock {
   margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px;

@@ -19,6 +19,9 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Two engines**: Stockfish 17 (over the UCI protocol) and **my own engine**
   (negamax, alpha-beta, quiescence search, MVV-LVA ordering, piece-square tables),
   side by side on the same game.
+- **Play online against other people**: sign up, log in, or play as a guest; a live lobby
+  plus invite links; moves pushed over **WebSockets (STOMP)**; server-side clocks and rules,
+  so the browser can't cheat; finished games go straight to the analyser.
 - **Play against bots** with clocks: 7 levels, from my own engine at depth 1 to Stockfish at full
   skill. The server validates every move and detects checkmate, stalemate, repetition, the 50-move
   rule and insufficient material; finished games open in the analyser with one click.
@@ -35,10 +38,14 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 
 ```mermaid
 flowchart LR
-    UI["React + TypeScript<br/>(Vite, react-chessboard)"] -- "REST / JSON" --> API
+    UI["React + TypeScript<br/>(Vite, react-chessboard)"] -- "REST / JSON" --> SEC
+    WS["STOMP over WebSocket<br/>/topic/games/{id}"] -. "live moves" .-> UI
 
     subgraph Spring Boot
+        SEC["Spring Security<br/>sessions + CSRF"] --> API
         API["Controllers<br/>+ ProblemDetail errors"] --> SVC["Services"]
+        SVC -- "SimpMessagingTemplate" --> WS
+        CLK["@Scheduled<br/>ClockChecker"] --> SVC
         SVC --> REPO["Spring Data JPA<br/>repositories"]
         SVC -- "@Async job" --> RUN["AnalysisRunner"]
         RUN --> ENG{{"Engine interface"}}
@@ -62,6 +69,9 @@ Design choices worth noting:
 | `Engine` **interface + factory** | Stockfish and my own engine are interchangeable; adding a third touches one class. |
 | **Flyway** owns the schema, Hibernate only `validate`s | Versioned, reviewable SQL instead of auto-generated tables. |
 | **Win-probability** based move labels (Lichess formula) | Losing 2 pawns at +10 is harmless; at 0.0 it loses the game. |
+| Online games: **server is the referee**, REST for commands, WebSocket only for pushes | No cheating from the browser; commands stay simple to secure and test. |
+| **Optimistic locking** (`@Version`) on online games | A move and a timeout arriving together can't overwrite each other (409 instead). |
+| Session cookie + `csrf.spa()` instead of JWT | Less code, HttpOnly cookie can't be stolen by XSS, works directly with WebSockets. |
 
 ## Quick start (Docker)
 
@@ -96,6 +106,11 @@ cd frontend && npm install && npm run dev   # UI with hot reload on :5173 (proxi
 | `POST` | `/api/games/import` | Store a pasted PGN or FEN (`{"text", "playerColor"}`) → 201 Created |
 | `POST` | `/api/games/{id}/analysis?engine=stockfish&depth=16` | Start an analysis (202 Accepted) |
 | `GET` | `/api/games/{id}/analysis?engine=my-engine` | Progress, or results when done |
+| `GET` | `/api/auth/me` · `POST` `/api/auth/signup` `/login` `/guest` `/logout` | Accounts (session cookie + CSRF) |
+| `POST` | `/api/online/games` | Create an online game `{minutes, increment, color, listed}` |
+| `GET` | `/api/online/games/open` · `/mine` · `/{id}` | Lobby, your games, one game |
+| `POST` | `/api/online/games/{id}/join` · `/moves` · `/resign` · `/cancel` | Play (validated on the server) |
+| `WS` | `/ws` → subscribe `/topic/games/{id}`, `/topic/lobby` | Live updates (STOMP) |
 | `GET` | `/api/bots` | Bot levels |
 | `POST` | `/api/bots/move` | `{level, moves}` → bot's reply + game status |
 | `GET` | `/api/positions/moves?fen=…` | Legal moves of any position |
@@ -106,7 +121,7 @@ Errors use the standard `application/problem+json` format (RFC 9457).
 ## Testing
 
 ```bash
-mvn test        # 80+ tests; needs Docker running (Testcontainers)
+mvn test        # 110 tests; needs Docker running (Testcontainers)
 ```
 
 - **Perft tests** check that move generation matches published node counts exactly.

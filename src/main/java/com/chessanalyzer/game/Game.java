@@ -111,6 +111,14 @@ public class Game {
         return game;
     }
 
+    /** A finished game played on this site, stored so it can be analysed. */
+    public static Game online(String pgn, String white, String black, String result, Instant playedAt) {
+        Game game = new Game(null, null, pgn, white, black, null, null,
+                Color.WHITE, result, null, null, playedAt);
+        game.source = GameSource.ONLINE;
+        return game;
+    }
+
     /** Keeps both sides of the relationship in sync (the list here, and move.game). */
     public void addMove(GameMove move) {
         moves.add(move);

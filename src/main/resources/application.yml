@@ -33,6 +33,12 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      timeout: 7d             # stay logged in for a week
+      cookie:
+        same-site: lax        # extra CSRF defence: the cookie isn't sent on cross-site POSTs
+        http-only: true       # JavaScript can't read the session cookie
 
 # Our own settings (not Spring ones), read by engine/EngineFactory.
 stockfish:

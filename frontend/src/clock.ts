@@ -49,6 +49,11 @@ export function pressClock(clock: Clock, mover: Color, now: number): Clock {
     : { ...clock, black: left, runningSince: now }
 }
 
+/** "5 | 0" for 5 minutes, no increment; "Unlimited" without a clock. */
+export function timeLabel(initialMs: number | null, incrementMs: number): string {
+  return initialMs === null ? 'Unlimited' : `${initialMs / 60_000} | ${incrementMs / 1000}`
+}
+
 /** 5:07, or 0:09.4 in the last ten seconds. */
 export function formatClock(ms: number): string {
   const safe = Math.max(0, ms)

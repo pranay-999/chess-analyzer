@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class SpaController {
 
-    @GetMapping({"/games/{id}", "/analyze", "/play"})
+    @GetMapping({"/games/{id}", "/analyze", "/play", "/login", "/online", "/online/{id}"})
     public String page() {
         return "forward:/index.html";
     }

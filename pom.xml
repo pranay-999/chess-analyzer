@@ -41,6 +41,18 @@
             <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
+        <!-- Spring Security: sign-up / login / guest sessions, protects the online-play API -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- WebSocket + STOMP: the server pushes moves to both players instantly -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- JPA/Hibernate: map Java classes to Postgres tables, Spring Data repositories -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

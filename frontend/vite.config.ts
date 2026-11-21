@@ -10,6 +10,7 @@ export default defineConfig({
     // so the browser thinks both live on the same server (no CORS setup needed).
     proxy: {
       '/api': 'http://localhost:8080',
+      '/ws': { target: 'ws://localhost:8080', ws: true }, // WebSocket for live online games
     },
   },
   build: {

@@ -104,6 +104,48 @@ export interface BotReply {
   winner: Color | null
 }
 
+export interface User {
+  id: number
+  username: string
+  guest: boolean
+}
+
+export type OnlineStatus = 'WAITING' | 'ACTIVE' | 'FINISHED' | 'ABORTED'
+
+export interface OnlinePlayer {
+  username: string
+  guest: boolean
+}
+
+/** Mirrors OnlineGameView.java. Pushed over the WebSocket after every change. */
+export interface OnlineGame {
+  id: string
+  status: OnlineStatus
+  white: OnlinePlayer | null
+  black: OnlinePlayer | null
+  creator: string
+  initialMs: number | null
+  incrementMs: number
+  whiteMs: number | null
+  blackMs: number | null
+  clockRunning: boolean
+  sideToMove: Color
+  fen: string
+  moves: LegalMove[]
+  result: string | null
+  reason: string | null
+  analysisGameId: number | null
+}
+
+export interface LobbyEntry {
+  id: string
+  creator: string
+  creatorGuest: boolean
+  initialMs: number | null
+  incrementMs: number
+  joinerColor: Color
+}
+
 export interface SyncResult {
   username: string
   monthsFetched: number
@@ -123,8 +165,20 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init)
+/** Reads a cookie the server set, e.g. XSRF-TOKEN. */
+function readCookie(name: string): string | undefined {
+  return document.cookie.split('; ').find((c) => c.startsWith(name + '='))?.split('=')[1]
+}
+
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  // CSRF protection (see SecurityConfig): every POST must echo the XSRF-TOKEN cookie
+  // back in a header. Other websites can't read our cookies, so they can't do this.
+  const headers = new Headers(init.headers)
+  const method = (init.method ?? 'GET').toUpperCase()
+  const csrf = readCookie('XSRF-TOKEN')
+  if (method !== 'GET' && csrf) headers.set('X-XSRF-TOKEN', decodeURIComponent(csrf))
+
+  const response = await fetch(url, { ...init, headers })
   if (!response.ok) {
     let detail: string | undefined
     try {
@@ -134,8 +188,15 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(response.status, detail ?? `Request failed (${response.status})`)
   }
-  return response.json() as Promise<T>
+  const text = await response.text() // some answers (logout) have no body
+  return (text ? JSON.parse(text) : undefined) as T
 }
+
+const json = (body: unknown): RequestInit => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+})
 
 const user = (username: string) => encodeURIComponent(username.trim())
 
@@ -173,6 +234,27 @@ export const api = {
   /** Ask an engine about any position, e.g. one you reached by moving pieces yourself. */
   evaluatePosition: (fen: string, engine: EngineName, depth: number) =>
     request<PositionEval>(`/api/positions/eval?fen=${encodeURIComponent(fen)}&engine=${engine}&depth=${depth}`),
+
+  // ---- accounts ----
+  me: () => request<{ user: User | null }>('/api/auth/me').then((r) => r.user),
+  signup: (username: string, password: string) =>
+    request<{ user: User }>('/api/auth/signup', json({ username, password })).then((r) => r.user),
+  login: (username: string, password: string) =>
+    request<{ user: User }>('/api/auth/login', json({ username, password })).then((r) => r.user),
+  guest: () => request<{ user: User }>('/api/auth/guest', { method: 'POST' }).then((r) => r.user),
+  logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+
+  // ---- online play ----
+  createOnline: (minutes: number | null, increment: number, color: Color | 'RANDOM', listed: boolean) =>
+    request<OnlineGame>('/api/online/games', json({ minutes, increment, color, listed })),
+  openGames: () => request<LobbyEntry[]>('/api/online/games/open'),
+  myOnlineGames: () => request<OnlineGame[]>('/api/online/games/mine'),
+  onlineGame: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}`),
+  joinOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/join`, { method: 'POST' }),
+  moveOnline: (id: string, uci: string) =>
+    request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/moves`, json({ uci })),
+  resignOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/resign`, { method: 'POST' }),
+  cancelOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
 
   listBots: () => request<BotLevel[]>('/api/bots'),
 

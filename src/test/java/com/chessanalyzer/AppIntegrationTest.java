@@ -54,7 +54,8 @@ import static org.mockito.Mockito.when;
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"my-engine.max-depth=2", "my-engine.time-limit-ms=500"})   // keep the engine quick
+        properties = {"my-engine.max-depth=2", "my-engine.time-limit-ms=500",   // keep the engine quick
+                "chess.scheduling.enabled=false"})
 class AppIntegrationTest {
 
     @Container
@@ -73,7 +74,7 @@ class AppIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        http = RestClient.create("http://localhost:" + port);
+        http = new TestBrowser(port).http;   // keeps cookies and sends the CSRF header, like the React app
         when(chessCom.fetchArchiveUrls("alice")).thenReturn(List.of(ARCHIVE));
         when(chessCom.fetchGames(ARCHIVE)).thenReturn(List.of(scholarsMate()));
     }
