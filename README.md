@@ -25,6 +25,11 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Play against bots** with clocks: 7 levels, from my own engine at depth 1 to Stockfish at full
   skill. The server validates every move and detects checkmate, stalemate, repetition, the 50-move
   rule and insufficient material; finished games open in the analyser with one click.
+- **Puzzles from your own mistakes**: every Mistake/Blunder you make (Stockfish-analysed) becomes a puzzle,
+  scheduled with **spaced repetition**. Equally good alternative answers are accepted after a Stockfish check.
+- **Stats dashboard**: score by colour, time control and opening; rating and accuracy by month; where your
+  mistakes happen (opening / middlegame / endgame). Computed in PostgreSQL with CTEs and `GROUP BY`.
+- **Tap-to-move** on every board (tap a piece, then a square), as well as drag-and-drop.
 - **Import from anywhere**: Chess.com and Lichess **game links**, PGN or FEN. Only **finished** games are
   accepted (fair play), and the server checks this with each site.
 - **Phone-ready**: installable web app (PWA). On **Android** it appears in the Chess.com app's **Share** menu;
@@ -122,6 +127,8 @@ cd frontend && npm install && npm run dev   # UI with hot reload on :5173 (proxi
 | `GET` | `/api/online/games/open` · `/mine` · `/{id}` | Lobby, your games, one game |
 | `POST` | `/api/online/games/{id}/join` · `/moves` · `/resign` · `/cancel` | Play (validated on the server) |
 | `WS` | `/ws` → subscribe `/topic/games/{id}`, `/topic/lobby` | Live updates (STOMP) |
+| `GET` | `/api/players/{username}/stats?timeClass=` | Stats dashboard numbers |
+| `GET` | `/api/puzzles/next?player=` · `POST` `/api/puzzles/{id}/attempt` · `/reveal` | Puzzles from your mistakes |
 | `GET` | `/api/bots` | Bot levels |
 | `POST` | `/api/bots/move` | `{level, moves}` → bot's reply + game status |
 | `GET` | `/api/positions/moves?fen=…` | Legal moves of any position |
@@ -132,7 +139,7 @@ Errors use the standard `application/problem+json` format (RFC 9457).
 ## Testing
 
 ```bash
-mvn test        # 110 tests; needs Docker running (Testcontainers)
+mvn test        # 135 tests; needs Docker running (Testcontainers)
 ```
 
 - **Perft tests** check that move generation matches published node counts exactly.

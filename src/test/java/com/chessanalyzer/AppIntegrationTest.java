@@ -235,6 +235,34 @@ class AppIntegrationTest {
         assertTrue(right.correct());
     }
 
+    record Split(String label, long games, long wins, long losses, long draws) {
+    }
+
+    record Point(String month, double value, long games) {
+    }
+
+    record Stats(Split total, List<Split> byColor, List<Split> openings, List<Point> rating) {
+    }
+
+    @Test
+    void statsAreComputedBySql() {
+        // Three games for "zara": a win as White, a loss as Black, a draw as White.
+        String[] pgns = {
+                "[White \"Zara\"]\n[Black \"x\"]\n[Result \"1-0\"]\n[WhiteElo \"1500\"]\n[Date \"2026.10.05\"]\n[Opening \"Italian Game: Giuoco Piano\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 1-0\n",
+                "[White \"y\"]\n[Black \"zara\"]\n[Result \"1-0\"]\n[BlackElo \"1480\"]\n[Date \"2026.10.20\"]\n[Opening \"French Defense\"]\n\n1. e4 e6 1-0\n",
+                "[White \"zara\"]\n[Black \"z\"]\n[Result \"1/2-1/2\"]\n[WhiteElo \"1520\"]\n[Date \"2026.11.02\"]\n[Opening \"Italian Game\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 1/2-1/2\n",
+        };
+        for (String pgn : pgns) {
+            http.post().uri("/api/games/import").body(Map.of("text", pgn)).retrieve().toBodilessEntity();
+        }
+
+        Stats stats = http.get().uri("/api/players/Zara/stats").retrieve().body(Stats.class);
+        assertEquals(new Split("All", 3, 1, 1, 1), stats.total());
+        assertEquals(new Split("WHITE", 2, 1, 0, 1), stats.byColor().getFirst());
+        assertEquals(new Split("Italian Game", 2, 1, 0, 1), stats.openings().getFirst());   // name from [Opening]
+        assertEquals(List.of(new Point("2026-10", 1490, 2), new Point("2026-11", 1520, 1)), stats.rating());
+    }
+
     @Test
     void errorsAreProblemDetailJson() {
         HttpClientErrorException notFound = assertThrows(HttpClientErrorException.class,

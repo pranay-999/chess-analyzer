@@ -178,6 +178,35 @@ export interface PuzzleAttempt {
   nextDueAt: string
 }
 
+/** StatsService.java records */
+export interface Split {
+  label: string
+  games: number
+  wins: number
+  losses: number
+  draws: number
+}
+
+export interface StatsPoint {
+  month: string
+  value: number
+  games: number
+}
+
+export interface Stats {
+  player: string
+  timeClass: string | null
+  total: Split
+  byColor: Split[]
+  byTimeClass: Split[]
+  openings: Split[]
+  rating: StatsPoint[]
+  accuracy: StatsPoint[]
+  analysedGames: number
+  averageAccuracy: number | null
+  mistakesByPhase: { phase: string; inaccuracies: number; mistakes: number; blunders: number }[]
+}
+
 export interface SyncResult {
   username: string
   monthsFetched: number
@@ -288,6 +317,9 @@ export const api = {
     request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/moves`, json({ uci })),
   resignOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/resign`, { method: 'POST' }),
   cancelOnline: (id: string) => request<OnlineGame>(`/api/online/games/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
+
+  stats: (username: string, timeClass?: string) =>
+    request<Stats>(`/api/players/${user(username)}/stats${timeClass ? `?timeClass=${encodeURIComponent(timeClass)}` : ''}`),
 
   // ---- puzzles from your mistakes ----
   nextPuzzle: (player?: string) =>
