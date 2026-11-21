@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>♞ Chess Analyzer</h1>
+
+  <button id="analyse-page" class="primary">Analyse this page's game</button>
+  <p id="page-hint" class="hint"></p>
+
+  <label for="text">…or paste a PGN, FEN or game link</label>
+  <textarea id="text" rows="4" placeholder="1. e4 e5 2. Nf3 …"></textarea>
+  <button id="analyse-text">Analyse</button>
+
+  <details>
+    <summary>Server</summary>
+    <label for="server">Your Chess Analyzer address</label>
+    <input id="server" type="url" placeholder="http://localhost:8080">
+    <button id="save-server">Save</button>
+    <p id="saved" class="hint"></p>
+  </details>
+
+  <p class="hint">Only finished games can be analysed (fair-play rules).</p>
+
+  <script src="common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+:root {
+  --bg: #ffffff;
+  --text: #1b2230;
+  --muted: #667085;
+  --border: #dde1e7;
+  --accent: #2f6fde;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1e2128; --text: #e8eaef; --muted: #98a1b0; --border: #30353f; --accent: #4c8dff; }
+}
+body {
+  width: 300px; margin: 0; padding: 14px; background: var(--bg); color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  display: flex; flex-direction: column; gap: 8px;
+}
+h1 { font-size: 16px; margin: 0 0 4px; }
+label { font-size: 12px; color: var(--muted); }
+textarea, input {
+  font: inherit; font-size: 12px; color: var(--text); background: transparent;
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; width: 100%; box-sizing: border-box;
+}
+button {
+  font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--text); cursor: pointer;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button:disabled { opacity: 0.45; cursor: default; }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+details { border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+summary { cursor: pointer; font-size: 13px; }
+details[open] > *:not(summary) { margin-top: 6px; }
