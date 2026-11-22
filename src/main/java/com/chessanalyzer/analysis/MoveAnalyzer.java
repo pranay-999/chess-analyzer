@@ -3,6 +3,7 @@ package com.chessanalyzer.analysis;
 import com.chessanalyzer.chess.Board;
 import com.chessanalyzer.chess.Color;
 import com.chessanalyzer.chess.Move;
+import com.chessanalyzer.chess.Sacrifice;
 import com.chessanalyzer.chess.San;
 import com.chessanalyzer.engine.Evaluation;
 
@@ -26,10 +27,25 @@ public final class MoveAnalyzer {
     }
 
     /** Result for one played move. evalCp/mateIn = position AFTER the move, white's view. */
+    /**
+     * @param winDrop         winning chance the move lost (0-100)
+     * @param materialGivenUp pawns' worth the move gave away (see chess.Sacrifice)
+     * @param onlyMoveGap     how much worse (in winning chance) the second-best move was; null if unknown
+     */
     public record AnalyzedMove(int ply, Color mover, Integer evalCp, Integer mateIn,
                                String bestMoveUci, String bestMoveSan, int cpLoss,
-                               Classification classification, double accuracy) {
+                               Classification classification, double accuracy,
+                               double winDrop, int materialGivenUp, Double onlyMoveGap) {
     }
+
+    /** Everything the labelling rules look at, for one move (all from the mover's point of view). */
+    record MoveFacts(double winDrop, boolean playedBest, int materialGivenUp, Double onlyMoveGap,
+                     boolean recapture, int legalMoveCount, double winBefore, double winAfter) {
+    }
+
+    static final double NEAR_BEST = 2.0;          // within 2% of the best move counts as "as good as best"
+    static final int SACRIFICE_PAWNS = 2;         // giving up at least a piece for a pawn (or the exchange)
+    static final double ONLY_MOVE_GAP = 15.0;     // second-best move at least 15% worse = "only move"
 
     public record Result(List<AnalyzedMove> moves, BigDecimal accuracyWhite, BigDecimal accuracyBlack) {
     }
@@ -52,16 +68,49 @@ public final class MoveAnalyzer {
             double winAfter = winPercentFor(mover, evalAfter, mover.opposite());
             double drop = Math.max(0, winBefore - winAfter);
 
-            boolean playedBest = playedUci.get(i).equals(evalBefore.bestMoveUci());
+            String played = playedUci.get(i);
+            boolean playedBest = played.equals(evalBefore.bestMoveUci());
             int cpLoss = Math.max(0, cpFor(mover, evalBefore, mover) - cpFor(mover, evalAfter, mover.opposite()));
             String bestSan = evalBefore.bestMoveUci() == null ? null
                     : San.toSan(before, Move.fromUci(evalBefore.bestMoveUci()));
 
+            // Extra facts for the "!" labels:
+            int given = Sacrifice.materialGivenUp(before, Move.fromUci(played));
+            Double gap = null;   // how much worse the second-best move was (needs Stockfish's 2nd line)
+            if (evalBefore.hasSecond()) {
+                Evaluation second = new Evaluation(evalBefore.secondCp(), evalBefore.secondMate(), null);
+                gap = Math.max(0, winBefore - winPercentFor(mover, second, mover));
+            }
+            // Taking back on the square the opponent just captured on is "only move" all the time: not Great.
+            boolean recapture = i > 0 && played.substring(2, 4).equals(playedUci.get(i - 1).substring(2, 4));
+            MoveFacts facts = new MoveFacts(drop, playedBest, given, gap, recapture,
+                    before.legalMoves().size(), winBefore, winAfter);
+
             moves.add(new AnalyzedMove(i + 1, mover, evalAfter.cp(), evalAfter.mate(),
                     evalBefore.bestMoveUci(), bestSan, cpLoss,
-                    classify(drop, playedBest), moveAccuracy(drop)));
+                    classify(facts), moveAccuracy(drop), drop, given, gap));
         }
         return new Result(moves, averageAccuracy(moves, Color.WHITE), averageAccuracy(moves, Color.BLACK));
+    }
+
+    /**
+     * Brilliant (!!): a good SACRIFICE. The move gives away at least {@value #SACRIFICE_PAWNS} pawns'
+     *   worth of material, yet it's the best move (or within {@value #NEAR_BEST}%), you weren't already
+     *   completely winning, and you're not worse off afterwards.
+     * Great (!): the ONLY good move. You found the best move while the second-best was at least
+     *   {@value #ONLY_MOVE_GAP}% worse. Simple recaptures and positions with 1-2 legal moves don't count.
+     * Everything else: by how much winning chance the move lost (below).
+     */
+    static Classification classify(MoveFacts f) {
+        boolean asGoodAsBest = f.playedBest() || f.winDrop() < NEAR_BEST;
+        if (asGoodAsBest && f.materialGivenUp() >= SACRIFICE_PAWNS && f.winBefore() < 97 && f.winAfter() >= 40) {
+            return Classification.BRILLIANT;
+        }
+        if (f.playedBest() && f.onlyMoveGap() != null && f.onlyMoveGap() >= ONLY_MOVE_GAP
+                && !f.recapture() && f.legalMoveCount() >= 3) {
+            return Classification.GREAT;
+        }
+        return classify(f.winDrop(), f.playedBest());
     }
 
     static Classification classify(double winPercentDrop, boolean playedBest) {

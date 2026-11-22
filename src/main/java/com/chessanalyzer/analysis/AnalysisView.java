@@ -12,7 +12,8 @@ public record AnalysisView(long id, long gameId, String engine, int depth, Analy
                            BigDecimal accuracyBlack, String error, List<MoveEvalView> moves) {
 
     public record MoveEvalView(int ply, Integer evalCp, Integer mateIn, String bestMoveUci,
-                               String bestMoveSan, Integer cpLoss, Classification classification) {
+                               String bestMoveSan, Integer cpLoss, Classification classification,
+                               Double winDrop, Integer materialGivenUp, Double onlyMoveGap) {
     }
 
     /** Only touches the lazy evaluations list when the analysis is DONE. */
@@ -20,7 +21,8 @@ public record AnalysisView(long id, long gameId, String engine, int depth, Analy
         List<MoveEvalView> moves = a.getStatus() != AnalysisStatus.DONE ? List.of()
                 : a.getEvaluations().stream()
                 .map(e -> new MoveEvalView(e.getPly(), e.getEvalCp(), e.getMateIn(), e.getBestMoveUci(),
-                        e.getBestMoveSan(), e.getCpLoss(), e.getClassification()))
+                        e.getBestMoveSan(), e.getCpLoss(), e.getClassification(),
+                        e.getWinDrop(), e.getMaterialGivenUp(), e.getOnlyMoveGap()))
                 .toList();
         return new AnalysisView(a.getId(), gameId, a.getEngine(), a.getDepth(), a.getStatus(),
                 a.getAnalyzedPlies(), a.getTotalPlies(), a.getAccuracyWhite(), a.getAccuracyBlack(),

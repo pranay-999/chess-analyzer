@@ -14,7 +14,8 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Import** all games of any Chess.com player (public API), incrementally: re-syncs only fetch new months.
 - **Replay** games on an interactive board with keyboard navigation.
 - **Engine analysis** of every move as a background job with live progress:
-  Best / Good / Inaccuracy / Mistake / Blunder, the move you should have played,
+  **Brilliant !!** (good sacrifices) / **Great !** (only good move) / Best / Good / Inaccuracy / Mistake / Blunder,
+  with a sentence explaining *why*, the move you should have played,
   accuracy %, an evaluation bar, and a clickable evaluation graph.
 - **Two engines**: Stockfish 17 (over the UCI protocol) and **my own engine**
   (negamax, alpha-beta, quiescence search, MVV-LVA ordering, piece-square tables),

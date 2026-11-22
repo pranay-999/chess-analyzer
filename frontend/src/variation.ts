@@ -30,5 +30,5 @@ export function playInVariation(variation: Variation | null, ply: number, move: 
 
 /** Lets the eval bar / formatter (written for analysed moves) display a live position eval. */
 export function asMoveEval(e: PositionEval, ply: number): MoveEval {
-  return { ply, evalCp: e.cp, mateIn: e.mate, bestMoveUci: e.bestMoveUci, bestMoveSan: e.bestMoveSan, cpLoss: null, classification: 'GOOD' }
+  return { ply, evalCp: e.cp, mateIn: e.mate, bestMoveUci: e.bestMoveUci, bestMoveSan: e.bestMoveSan, cpLoss: null, classification: 'GOOD', winDrop: null, materialGivenUp: null, onlyMoveGap: null }
 }

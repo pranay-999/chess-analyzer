@@ -5,7 +5,7 @@
 
 export type Color = 'WHITE' | 'BLACK'
 export type Outcome = 'WIN' | 'LOSS' | 'DRAW' | 'UNKNOWN'
-export type Classification = 'BEST' | 'GOOD' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER'
+export type Classification = 'BRILLIANT' | 'GREAT' | 'BEST' | 'GOOD' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER'
 export type AnalysisStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED'
 export type EngineName = 'stockfish' | 'my-engine' // must match EngineFactory.STOCKFISH / MY_ENGINE
 
@@ -54,6 +54,10 @@ export interface MoveEval {
   bestMoveSan: string | null
   cpLoss: number | null
   classification: Classification
+  // The "why" behind the label (null for analyses made before these were stored):
+  winDrop: number | null         // winning chance this move lost, 0-100
+  materialGivenUp: number | null // pawns' worth given away (a sacrifice)
+  onlyMoveGap: number | null     // how much worse the second-best move was
 }
 
 export interface Analysis {

@@ -79,7 +79,8 @@ public class AnalysisRunner {
             MoveAnalyzer.Result result = MoveAnalyzer.analyze(fens, played, evals);
             List<MoveEvaluation> rows = result.moves().stream()
                     .map(m -> new MoveEvaluation(m.ply(), m.evalCp(), m.mateIn(), m.bestMoveUci(),
-                            m.bestMoveSan(), m.cpLoss(), m.classification()))
+                            m.bestMoveSan(), m.cpLoss(), m.classification(),
+                            round1(m.winDrop()), m.materialGivenUp(), m.onlyMoveGap() == null ? null : round1(m.onlyMoveGap())))
                     .toList();
             // The `analysis` object from step 1 is DETACHED (its transaction ended), and its
             // lazy `evaluations` list was never loaded, so changing it would throw
@@ -100,5 +101,9 @@ public class AnalysisRunner {
             log.error("Analysis {} failed", analysisId, e);
             analyses.markFailed(analysisId, e.getMessage() != null ? e.getMessage() : e.toString());
         }
+    }
+
+    private static double round1(double value) {
+        return Math.round(value * 10) / 10.0;
     }
 }

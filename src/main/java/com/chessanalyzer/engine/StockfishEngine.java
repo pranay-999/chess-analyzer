@@ -30,14 +30,16 @@ public class StockfishEngine implements Engine {
     private final Writer toEngine;
 
     public StockfishEngine(String executablePath, int threads) {
-        this(executablePath, threads, 20);
+        this(executablePath, threads, 20, 1);
     }
 
     /**
      * @param skillLevel 0 (weakest) .. 20 (full strength). Below 20 Stockfish deliberately
      *                   picks weaker moves now and then, which is how its "bots" get easier.
+     * @param multiPv    how many best lines to search: 2 = also the second-best move (for
+     *                   "Great" moves), at the cost of a somewhat slower search
      */
-    public StockfishEngine(String executablePath, int threads, int skillLevel) {
+    public StockfishEngine(String executablePath, int threads, int skillLevel, int multiPv) {
         try {
             process = new ProcessBuilder(executablePath).redirectErrorStream(true).start();
         } catch (IOException e) {
@@ -49,6 +51,7 @@ public class StockfishEngine implements Engine {
         waitFor("uciok");
         send("setoption name Threads value " + threads);
         send("setoption name Skill Level value " + skillLevel);
+        send("setoption name MultiPV value " + multiPv);
         send("isready");
         waitFor("readyok");
     }
@@ -62,37 +65,51 @@ public class StockfishEngine implements Engine {
     public Evaluation evaluate(String fen, int depth) {
         send("position fen " + fen);
         send("go depth " + depth);
-        String lastScoreLine = null;
+        String bestLine = null;    // "info ... multipv 1 score cp 31 ..." (deeper lines replace shallower ones)
+        String secondLine = null;  // "info ... multipv 2 score cp 12 ..." (only with MultiPV 2)
         String line;
         while ((line = readLine()) != null) {
             if (line.startsWith("info") && line.contains(" score ")) {
-                lastScoreLine = line;              // deeper lines replace shallower ones
+                if (line.contains(" multipv 2 ")) {
+                    secondLine = line;
+                } else if (!line.contains(" multipv ") || line.contains(" multipv 1 ")) {
+                    bestLine = line;
+                }
             } else if (line.startsWith("bestmove")) {
                 boolean whiteToMove = fen.split(" ")[1].equals("w");
-                return parse(lastScoreLine, line, whiteToMove);
+                return parse(bestLine, secondLine, line, whiteToMove);
             }
         }
         throw new IllegalStateException("Stockfish stopped unexpectedly");
     }
 
+    /** Single best line (as before), kept for the unit tests. */
+    static Evaluation parse(String scoreLine, String bestMoveLine, boolean whiteToMove) {
+        return parse(scoreLine, null, bestMoveLine, whiteToMove);
+    }
+
     /**
-     * Turns the last "info ... score ..." line and the "bestmove" line into an Evaluation.
-     * Stockfish reports the score for the SIDE TO MOVE; we flip it for black so it's
+     * Turns the last "info ... score ..." lines and the "bestmove" line into an Evaluation.
+     * Stockfish reports scores for the SIDE TO MOVE; we flip them for black so they're
      * always from white's point of view.
      * Package-private and static so it can be unit tested without running Stockfish.
      */
-    static Evaluation parse(String scoreLine, String bestMoveLine, boolean whiteToMove) {
+    static Evaluation parse(String bestLine, String secondLine, String bestMoveLine, boolean whiteToMove) {
+        Integer[] best = score(bestLine, whiteToMove);
+        Integer[] second = secondLine == null ? new Integer[]{null, null} : score(secondLine, whiteToMove);
+        String move = bestMoveLine.split(" ")[1];               // "bestmove e2e4 ponder e7e5"
+        return new Evaluation(best[0], best[1], move.equals("(none)") ? null : move, second[0], second[1]);
+    }
+
+    /** {cp, mate} from "... score cp 31 ..." or "... score mate -2 ...", white's view. */
+    private static Integer[] score(String line, boolean whiteToMove) {
         Integer cp = null;
         Integer mate = null;
-        String[] tokens = scoreLine.split(" ");
+        String[] tokens = line.split(" ");
         for (int i = 0; i < tokens.length - 2; i++) {
             if (tokens[i].equals("score")) {
                 int value = Integer.parseInt(tokens[i + 2]);
-                if (tokens[i + 1].equals("cp")) {
-                    cp = value;
-                } else {
-                    mate = value;
-                }
+                if (tokens[i + 1].equals("cp")) cp = value; else mate = value;
                 break;
             }
         }
@@ -100,8 +117,7 @@ public class StockfishEngine implements Engine {
             if (cp != null) cp = -cp;
             if (mate != null) mate = -mate;
         }
-        String best = bestMoveLine.split(" ")[1];               // "bestmove e2e4 ponder e7e5"
-        return new Evaluation(cp, mate, best.equals("(none)") ? null : best);
+        return new Integer[]{cp, mate};
     }
 
     @Override

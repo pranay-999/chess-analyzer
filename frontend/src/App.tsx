@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useParams } from 'react-router'
 import { useAuth } from './auth'
+import ErrorBoundary from './components/ErrorBoundary'
 import ThemePicker from './components/ThemePicker'
 import AnalyzePage from './pages/AnalyzePage'
 import GamePage from './pages/GamePage'
@@ -16,6 +17,7 @@ import StatsPage from './pages/StatsPage'
 /** The frame around every page: header + whichever page matches the URL. */
 export default function App() {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
   return (
     <>
       <header className="topbar">
@@ -43,19 +45,21 @@ export default function App() {
         </div>
       </header>
       <main className="container">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/analyze" element={<AnalyzePage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/play" element={<PlayPage />} />
-          <Route path="/puzzles" element={<PuzzlesPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/online" element={<RequireLogin><OnlinePage /></RequireLogin>} />
-          <Route path="/online/:id" element={<RequireLogin><OnlineGameRoute /></RequireLogin>} />
-          <Route path="/games/:id" element={<GameRoute />} />
-          <Route path="*" element={<p className="muted">Page not found.</p>} />
-        </Routes>
+        <ErrorBoundary key={pathname}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/analyze" element={<AnalyzePage />} />
+            <Route path="/import" element={<ImportPage />} />
+            <Route path="/play" element={<PlayPage />} />
+            <Route path="/puzzles" element={<PuzzlesPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/online" element={<RequireLogin><OnlinePage /></RequireLogin>} />
+            <Route path="/online/:id" element={<RequireLogin><OnlineGameRoute /></RequireLogin>} />
+            <Route path="/games/:id" element={<GameRoute />} />
+            <Route path="*" element={<p className="muted">Page not found.</p>} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </>
   )

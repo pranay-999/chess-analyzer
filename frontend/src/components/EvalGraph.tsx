@@ -44,7 +44,7 @@ export default function EvalGraph({ evals, startFen, currentPly, onSelect }: {
       </svg>
       <div className="graph-cursor" style={{ left: `${xPercent(currentPly)}%` }} />
       {evals
-        .filter((e) => e.classification === 'MISTAKE' || e.classification === 'BLUNDER')
+        .filter((e) => ['BRILLIANT', 'GREAT', 'MISTAKE', 'BLUNDER'].includes(e.classification)) // the moments worth a dot
         .map((e) => (
           <span key={e.ply} className="graph-dot"
                 style={{

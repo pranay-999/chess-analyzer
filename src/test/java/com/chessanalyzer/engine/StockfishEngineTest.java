@@ -8,6 +8,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StockfishEngineTest {
 
@@ -39,6 +40,15 @@ class StockfishEngineTest {
         assertNull(over.bestMoveUci());
     }
 
+    @Test
+    void readsTheSecondBestLine() {
+        Evaluation e = StockfishEngine.parse(
+                "info depth 14 multipv 1 score cp 120 pv d1d8",
+                "info depth 14 multipv 2 score cp -40 pv a2a3",
+                "bestmove d1d8", false);   // black to move: both scores flip
+        assertEquals(new Evaluation(-120, null, "d1d8", 40, null), e);
+    }
+
     // ---- real engine: runs only if Stockfish is installed ----
 
     static boolean stockfishInstalled() {
@@ -53,6 +63,18 @@ class StockfishEngineTest {
             Evaluation e = engine.evaluate("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 10);
             assertEquals("d1d8", e.bestMoveUci());
             assertEquals(1, e.mate());
+        }
+    }
+
+    @Test
+    @EnabledIf("stockfishInstalled")
+    void multiPvGivesTheSecondBestMove() {
+        try (Engine engine = new StockfishEngine(STOCKFISH, 1, 20, 2)) {
+            // Rd8# is mate; the second-best move is far worse (no mate).
+            Evaluation e = engine.evaluate("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 10);
+            assertEquals(1, e.mate());
+            assertTrue(e.hasSecond());
+            assertNull(e.secondMate());
         }
     }
 

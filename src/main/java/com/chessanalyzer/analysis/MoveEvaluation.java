@@ -34,11 +34,17 @@ public class MoveEvaluation {
     @Enumerated(EnumType.STRING)
     private Classification classification;
 
+    // The "why" behind the label (null for analyses made before Phase 18).
+    private Double winDrop;
+    private Integer materialGivenUp;
+    private Double onlyMoveGap;
+
     protected MoveEvaluation() {
     }
 
     public MoveEvaluation(int ply, Integer evalCp, Integer mateIn, String bestMoveUci, String bestMoveSan,
-                          int cpLoss, Classification classification) {
+                          int cpLoss, Classification classification,
+                          Double winDrop, Integer materialGivenUp, Double onlyMoveGap) {
         this.ply = ply;
         this.evalCp = evalCp;
         this.mateIn = mateIn;
@@ -46,6 +52,9 @@ public class MoveEvaluation {
         this.bestMoveSan = bestMoveSan;
         this.cpLoss = cpLoss;
         this.classification = classification;
+        this.winDrop = winDrop;
+        this.materialGivenUp = materialGivenUp;
+        this.onlyMoveGap = onlyMoveGap;
     }
 
     void setAnalysis(Analysis analysis) {
@@ -59,4 +68,7 @@ public class MoveEvaluation {
     public String getBestMoveSan() { return bestMoveSan; }
     public Integer getCpLoss() { return cpLoss; }
     public Classification getClassification() { return classification; }
+    public Double getWinDrop() { return winDrop; }
+    public Integer getMaterialGivenUp() { return materialGivenUp; }
+    public Double getOnlyMoveGap() { return onlyMoveGap; }
 }

@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router'
 import {
   api, type Analysis, type Color, type EngineName, type GameDetail, type LegalMove, type MoveEval, type PositionEval,
 } from '../api'
-import { CLASSIFICATION, formatEval, moverOf, whiteWinPercent } from '../chess'
+import { CLASSIFICATION, explain, formatEval, moverOf, whiteWinPercent } from '../chess'
 import EvalBar from '../components/EvalBar'
 import EvalGraph from '../components/EvalGraph'
 import MoveList from '../components/MoveList'
@@ -376,7 +376,9 @@ function MoveInsight({ ply, game, evaluation, nextBest }: {
         {meta && <span className="badge" style={{ background: meta.color }}>{meta.symbol} {meta.label}</span>}
         {evaluation && <span className="eval-chip">{formatEval(evaluation, ply, game.startFen)}</span>}
       </div>
-      {evaluation && evaluation.classification !== 'BEST' && evaluation.bestMoveSan && (
+      {evaluation && explain(evaluation, move.uci) && <span className="small why">{explain(evaluation, move.uci)}</span>}
+      {evaluation && evaluation.bestMoveSan && evaluation.bestMoveUci !== move.uci
+        && !['BRILLIANT', 'GREAT', 'BEST'].includes(evaluation.classification) && (
         <span className="small">Best was <strong>{evaluation.bestMoveSan}</strong>
           {evaluation.cpLoss ? <span className="muted"> (you lost {(evaluation.cpLoss / 100).toFixed(1)} pawns)</span> : null}
         </span>
@@ -455,7 +457,7 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
   }
 
   // Count verdicts per player.
-  const kinds = ['BEST', 'INACCURACY', 'MISTAKE', 'BLUNDER'] as const
+  const kinds = ['BRILLIANT', 'GREAT', 'BEST', 'INACCURACY', 'MISTAKE', 'BLUNDER'] as const
   const count = (color: Color, kind: string) =>
     analysis.moves.filter((m) => m.classification === kind && moverOf(m.ply, startFen) === color).length
 
@@ -482,10 +484,31 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
           ))}
         </tbody>
       </table>
+      <details className="rating-help">
+        <summary>How are moves rated?</summary>
+        <ul>
+          <li><Mark kind="BRILLIANT" /> <strong>Brilliant</strong>: a good <em>sacrifice</em>. You gave away at least a piece's
+            worth for a pawn (or a rook for a minor piece), it was the best move or within 2% of it, you weren't
+            already completely winning, and you're not worse off afterwards.</li>
+          <li><Mark kind="GREAT" /> <strong>Great</strong>: the <em>only good move</em>. You found Stockfish's best move while the
+            next-best move was at least 15% worse. Simple recaptures don't count.</li>
+          <li><Mark kind="BEST" /> <strong>Best</strong>: Stockfish's first choice.</li>
+          <li><strong>Good / Inaccuracy / Mistake / Blunder</strong>: how much of your winning chance the move cost:
+            under 10% / 10–20% / 20–30% / 30% or more.</li>
+        </ul>
+        <span className="muted small">Brilliant and Great need Stockfish (it also reports its second-best move).
+          Games analysed before this feature: click Re-analyse.</span>
+      </details>
       {analysis.engine === 'stockfish' && (
         <Link to="/puzzles" className="small">🧩 Your mistakes from this game are now puzzles: practise them</Link>
       )}
       {controls}
     </div>
   )
+}
+
+/** The coloured symbol of a classification, e.g. a teal "!!". */
+function Mark({ kind }: { kind: keyof typeof CLASSIFICATION }) {
+  const meta = CLASSIFICATION[kind]
+  return <span className="badge" style={{ background: meta.color }}>{meta.symbol}</span>
 }

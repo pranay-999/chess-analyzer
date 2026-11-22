@@ -196,6 +196,15 @@ a.lobby-row:hover { background: var(--panel-2); }
 .invite input { flex: 1; min-width: 0; font-size: 13px; }
 a.btn { text-decoration: none; justify-content: center; }
 
+/* ---------- move ratings ---------- */
+:root {
+  --brilliant: #1fa9a0;   /* teal, like the usual "!!" colour */
+  --great: #5b8fc7;       /* blue "!" */
+}
+.why { color: var(--text); }
+.rating-help summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.rating-help ul { margin: 6px 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+
 /* ---------- stats dashboard ---------- */
 :root {
   /* severity ramp (one hue, light -> dark), validated as an ordered scale on light and dark surfaces */

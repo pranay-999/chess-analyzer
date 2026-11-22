@@ -39,6 +39,58 @@ class MoveAnalyzerTest {
         assertEquals(expected, MoveAnalyzer.classify(drop, playedBest));
     }
 
+    // MoveFacts(winDrop, playedBest, materialGivenUp, onlyMoveGap, recapture, legalMoves, winBefore, winAfter)
+
+    @Test
+    void goodSacrificeIsBrilliant() {
+        assertEquals(Classification.BRILLIANT, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 3, 5.0, false, 30, 55, 56)));
+        // Not the engine's move, but within 2%: still brilliant.
+        assertEquals(Classification.BRILLIANT, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(1.5, false, 3, null, false, 30, 55, 53.5)));
+    }
+
+    @Test
+    void sacrificesThatArentBrilliant() {
+        // Already completely winning: a sacrifice there is no achievement.
+        assertEquals(Classification.BEST, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 3, null, false, 30, 99, 99)));
+        // A sacrifice that's simply bad is still a mistake.
+        assertEquals(Classification.MISTAKE, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(25, false, 3, null, false, 30, 60, 35)));
+        // Giving up just a pawn is not enough.
+        assertEquals(Classification.BEST, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 1, null, false, 30, 60, 60)));
+    }
+
+    @Test
+    void onlyGoodMoveIsGreat() {
+        assertEquals(Classification.GREAT, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 0, 30.0, false, 25, 50, 50)));
+        // Second-best was nearly as good: just Best.
+        assertEquals(Classification.BEST, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 0, 4.0, false, 25, 50, 50)));
+        // Recapturing is "the only move" all the time: not Great.
+        assertEquals(Classification.BEST, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 0, 40.0, true, 25, 50, 50)));
+        // Only two legal moves: not much of a find.
+        assertEquals(Classification.BEST, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(0, true, 0, 40.0, false, 2, 50, 50)));
+    }
+
+    @Test
+    void bxf7SacrificeInARealPositionIsBrilliant() {
+        // Italian Game, 4. Bxf7+!? with hand-written scores saying it's the best move and fine for white.
+        String fen = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+        String after = Board.fromFen(fen).makeMove(Move.fromUci("c4f7")).toFen();
+        MoveAnalyzer.Result r = MoveAnalyzer.analyze(List.of(fen, after), List.of("c4f7"), List.of(
+                new Evaluation(40, null, "c4f7", -20, null),
+                new Evaluation(45, null, "e8f7")));
+        MoveAnalyzer.AnalyzedMove m = r.moves().getFirst();
+        assertEquals(Classification.BRILLIANT, m.classification());
+        assertEquals(2, m.materialGivenUp());   // bishop for a pawn
+    }
+
     @Test
     void analyzesFoolsMate() {
         // 1. f3 e5 2. g4?? Qh4#  — with hand-written "engine" scores (white's view).

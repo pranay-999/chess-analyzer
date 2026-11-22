@@ -38,7 +38,8 @@ public class EngineFactory {
 
     public Engine open(String name) {
         return switch (name) {
-            case STOCKFISH -> new StockfishEngine(stockfishPath, stockfishThreads);
+            // Analysis: full strength, and the 2 best lines (the second one tells us when a move was "Great").
+            case STOCKFISH -> new StockfishEngine(stockfishPath, stockfishThreads, 20, 2);
             case MY_ENGINE -> new MyEngine(myEngineMaxDepth, myEngineTimeLimitMs);
             default -> throw new IllegalArgumentException("Unknown engine: " + name);
         };
@@ -46,7 +47,7 @@ public class EngineFactory {
 
     /** A weakened Stockfish for bots (skill 0..20). */
     public Engine openStockfish(int skillLevel) {
-        return new StockfishEngine(stockfishPath, 1, skillLevel);   // 1 thread: bots don't need full power
+        return new StockfishEngine(stockfishPath, 1, skillLevel, 1);   // 1 thread, 1 line: bots don't need more
     }
 
     /** Our own engine with its own depth limit (bots use small depths to play weaker). */

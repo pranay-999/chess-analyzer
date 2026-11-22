@@ -36,9 +36,34 @@ export function formatEval(evaluation: MoveEval | undefined, ply: number, startF
 }
 
 export const CLASSIFICATION: Record<Classification, { label: string; symbol: string; color: string }> = {
+  BRILLIANT: { label: 'Brilliant', symbol: '!!', color: 'var(--brilliant)' },
+  GREAT: { label: 'Great', symbol: '!', color: 'var(--great)' },
   BEST: { label: 'Best', symbol: '★', color: 'var(--best)' },
   GOOD: { label: 'Good', symbol: '', color: 'var(--good)' },
   INACCURACY: { label: 'Inaccuracy', symbol: '?!', color: 'var(--inaccuracy)' },
   MISTAKE: { label: 'Mistake', symbol: '?', color: 'var(--mistake)' },
   BLUNDER: { label: 'Blunder', symbol: '??', color: 'var(--blunder)' },
+}
+
+/** In words: why this move got its label (from the numbers the server stored). */
+export function explain(e: MoveEval, playedUci: string): string | null {
+  const drop = e.winDrop
+  if (drop === null) return null // analysed before the reasons were stored: re-analyse to see them
+  const pct = (n: number) => `${Math.round(n)}%`
+  switch (e.classification) {
+    case 'BRILLIANT':
+      return `A good sacrifice: you gave away about ${e.materialGivenUp} pawns' worth of material on purpose, and it was ${
+        e.bestMoveUci === playedUci ? "Stockfish's best move" : 'as good as the best move'}.`
+    case 'GREAT':
+      return `The only good move: the next-best move would have cost about ${pct(e.onlyMoveGap ?? 0)} of your winning chance.`
+    case 'BEST':
+      return "Stockfish's first choice."
+    case 'GOOD':
+      return `A fine move: it cost only ${drop.toFixed(1)}% winning chance.`
+    case 'INACCURACY':
+    case 'MISTAKE':
+    case 'BLUNDER':
+      return `This move cost ${pct(drop)} of your winning chance (${
+        e.classification === 'INACCURACY' ? '10–20% = inaccuracy' : e.classification === 'MISTAKE' ? '20–30% = mistake' : '30% or more = blunder'}).`
+  }
 }
