@@ -216,6 +216,11 @@ export default function GamePage() {
     ? { [lastMove.slice(0, 2)]: { background: tint }, [lastMove.slice(2, 4)]: { background: tint } }
     : {}
 
+  // Badge on the board: the label of the move that led here, on the square it landed on (like Chess.com).
+  const badge = !exploring && currentEval && ply > 0
+    ? { square: moves[ply - 1].uci.slice(2, 4), info: CLASSIFICATION[currentEval.classification] }
+    : null
+
   // Green arrow = the engine's best move in the CURRENT position
   // (for game positions it's stored with the next move; for your own line it's the live eval).
   const nextBest = evalByPly.get(ply + 1)
@@ -263,12 +268,14 @@ export default function GamePage() {
               canDragPiece: input.canDragPiece,
               onPieceDrop: input.onPieceDrop,
               onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
-              allowDrawingArrows: false,
-              arrows,
+              onSquareMouseDown: input.onSquareMouseDown, // right-click marks a square, right-drag draws an arrow
+              onSquareMouseUp: input.onSquareMouseUp,
+              arrows,                                     // right-drag draws your own arrows on top
               squareStyles: { ...squareStyles, ...input.inputStyles },
               animationDurationInMs: 150,
               ...boardColors,
             }} />
+            {badge && <MoveBadge square={badge.square} flipped={flipped} {...badge.info} />}
           </div>
         </div>
         <PlayerBar color={bottom} game={game} analysis={analysis} />
@@ -511,4 +518,22 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
 function Mark({ kind }: { kind: keyof typeof CLASSIFICATION }) {
   const meta = CLASSIFICATION[kind]
   return <span className="badge" style={{ background: meta.color }}>{meta.symbol}</span>
+}
+
+/**
+ * The round label icon in the corner of a square. It is laid over the board (the
+ * board library knows nothing about it): each square is 1/8 = 12.5% of the board,
+ * so file a..h and rank 1..8 turn straight into a left/top percentage.
+ */
+function MoveBadge({ square, flipped, symbol, label, color }: { square: string; flipped: boolean; symbol: string; label: string; color: string }) {
+  const file = square.charCodeAt(0) - 97 // a = 0
+  const rank = Number(square[1]) - 1     // 1 = 0
+  const col = flipped ? 7 - file : file
+  const row = flipped ? rank : 7 - rank
+  return (
+    <span className="move-badge" title={label}
+          style={{ left: `${(col + 1) * 12.5}%`, top: `${row * 12.5}%`, background: color }}>
+      {symbol || '✓'}
+    </span>
+  )
 }

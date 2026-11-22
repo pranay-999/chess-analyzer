@@ -155,7 +155,8 @@ export default function PuzzlesPage() {
             canDragPiece: input.canDragPiece,
             onPieceDrop: input.onPieceDrop,
             onSquareClick: input.onSquareClick,
-            allowDrawingArrows: false,
+            onSquareMouseDown: input.onSquareMouseDown, // right-click marks a square, right-drag draws an arrow
+            onSquareMouseUp: input.onSquareMouseUp,
             arrows,
             squareStyles,
             animationDurationInMs: 150,

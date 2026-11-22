@@ -66,6 +66,7 @@ export default function OnlineGamePage() {
     legal: legal && legal.fen === game?.fen ? legal.moves : null,
     enabled: yourTurn,
     onMove: (move) => sendMove(move),
+    premoveColor: game?.status === 'ACTIVE' && you ? (you === 'WHITE' ? 'w' : 'b') : null, // move ahead while they think
   })
 
   if (error && !game) return <p className="error">{error} <Link to="/online">Back to the lobby</Link></p>
@@ -114,11 +115,12 @@ export default function OnlineGamePage() {
             id: 'online-board',
             position: game.fen,
             boardOrientation: bottom === 'WHITE' ? 'white' : 'black',
-            allowDragging: yourTurn,
+            allowDragging: game.status === 'ACTIVE' && you !== null,
             canDragPiece: input.canDragPiece,
             onPieceDrop: input.onPieceDrop,
             onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
-            allowDrawingArrows: false,
+            onSquareMouseDown: input.onSquareMouseDown, // right-click marks a square, right-drag draws an arrow
+            onSquareMouseUp: input.onSquareMouseUp,
             squareStyles: { ...squareStyles, ...input.inputStyles },
             animationDurationInMs: 150,
             ...boardColors,

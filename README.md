@@ -16,6 +16,7 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Engine analysis** of every move as a background job with live progress:
   **Brilliant !!** (good sacrifices) / **Great !** (only good move) / Best / Good / Inaccuracy / Mistake / Blunder,
   with a sentence explaining *why*, the move you should have played,
+  a label badge on the board itself, your own arrows (right-drag) and marked squares (right-click),
   accuracy %, an evaluation bar, and a clickable evaluation graph.
 - **Two engines**: Stockfish 17 (over the UCI protocol) and **my own engine**
   (negamax, alpha-beta, quiescence search, MVV-LVA ordering, piece-square tables),
@@ -26,6 +27,7 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Play against bots** with clocks: 7 levels, from my own engine at depth 1 to Stockfish at full
   skill. The server validates every move and detects checkmate, stalemate, repetition, the 50-move
   rule and insufficient material; finished games open in the analyser with one click.
+  **Pre-moves**: queue your next move while the bot or your online opponent is thinking.
 - **Puzzles from your own mistakes**: every Mistake/Blunder you make (Stockfish-analysed) becomes a puzzle,
   scheduled with **spaced repetition**. Equally good alternative answers are accepted after a Stockfish check.
 - **Stats dashboard**: score by colour, time control and opening; rating and accuracy by month; where your

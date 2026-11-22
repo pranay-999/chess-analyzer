@@ -73,6 +73,7 @@ export default function PlayPage() {
     legal: legal && legal.fen === fen ? legal.moves : null,
     enabled: yourTurn,
     onMove: (move) => setGame((g) => (g ? addMove(g, move, Date.now()) : g)),
+    premoveColor: playing ? (game.you === 'WHITE' ? 'w' : 'b') : null, // move ahead while the bot thinks
   })
 
   // Load the bot list once.
@@ -176,11 +177,12 @@ export default function PlayPage() {
             id: 'play-board',
             position: fen,
             boardOrientation: you === 'WHITE' ? 'white' : 'black',
-            allowDragging: yourTurn,
+            allowDragging: playing,
             canDragPiece: input.canDragPiece,
             onPieceDrop: input.onPieceDrop,
             onSquareClick: input.onSquareClick,   // tap a piece, then tap where it should go
-            allowDrawingArrows: false,
+            onSquareMouseDown: input.onSquareMouseDown, // right-click marks a square, right-drag draws an arrow
+            onSquareMouseUp: input.onSquareMouseUp,
             squareStyles: { ...squareStyles, ...input.inputStyles },
             animationDurationInMs: 150,
             ...boardColors,
