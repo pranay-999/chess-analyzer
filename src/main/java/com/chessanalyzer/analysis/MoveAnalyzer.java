@@ -3,6 +3,7 @@ package com.chessanalyzer.analysis;
 import com.chessanalyzer.chess.Board;
 import com.chessanalyzer.chess.Color;
 import com.chessanalyzer.chess.Move;
+import com.chessanalyzer.chess.OpeningBook;
 import com.chessanalyzer.chess.Sacrifice;
 import com.chessanalyzer.chess.San;
 import com.chessanalyzer.engine.Evaluation;
@@ -38,14 +39,29 @@ public final class MoveAnalyzer {
                                double winDrop, int materialGivenUp, Double onlyMoveGap) {
     }
 
-    /** Everything the labelling rules look at, for one move (all from the mover's point of view). */
+    /**
+     * Everything the labelling rules look at, for one move (all from the mover's point of view).
+     *
+     * @param book               still in known opening theory (every position so far is in the book)
+     * @param opponentDrop       winning chance the opponent's previous move lost; null for the first move
+     * @param winBeforeOpponent  my winning chance before the opponent's previous move; null for the first move
+     */
     record MoveFacts(double winDrop, boolean playedBest, int materialGivenUp, Double onlyMoveGap,
-                     boolean recapture, int legalMoveCount, double winBefore, double winAfter) {
+                     boolean recapture, int legalMoveCount, double winBefore, double winAfter,
+                     boolean book, Double opponentDrop, Double winBeforeOpponent) {
+
+        /** Without the Book/Miss facts (keeps the older tests short). */
+        MoveFacts(double winDrop, boolean playedBest, int materialGivenUp, Double onlyMoveGap,
+                  boolean recapture, int legalMoveCount, double winBefore, double winAfter) {
+            this(winDrop, playedBest, materialGivenUp, onlyMoveGap, recapture, legalMoveCount,
+                    winBefore, winAfter, false, null, null);
+        }
     }
 
     static final double NEAR_BEST = 2.0;          // within 2% of the best move counts as "as good as best"
     static final int SACRIFICE_PAWNS = 2;         // giving up at least a piece for a pawn (or the exchange)
     static final double ONLY_MOVE_GAP = 15.0;     // second-best move at least 15% worse = "only move"
+    static final double OPPONENT_MISTAKE = 20.0;  // the opponent's move lost at least 20% = a chance for you
 
     public record Result(List<AnalyzedMove> moves, BigDecimal accuracyWhite, BigDecimal accuracyBlack) {
     }
@@ -57,6 +73,9 @@ public final class MoveAnalyzer {
      */
     public static Result analyze(List<String> fens, List<String> playedUci, List<Evaluation> evals) {
         List<AnalyzedMove> moves = new ArrayList<>();
+        boolean inBook = OpeningBook.contains(fens.getFirst());
+        double previousDrop = 0;     // the opponent's last move: winning chance it lost…
+        double previousBefore = 0;   // …and their winning chance before it
         for (int i = 0; i < playedUci.size(); i++) {
             Board before = Board.fromFen(fens.get(i));
             Color mover = before.sideToMove();
@@ -83,8 +102,12 @@ public final class MoveAnalyzer {
             }
             // Taking back on the square the opponent just captured on is "only move" all the time: not Great.
             boolean recapture = i > 0 && played.substring(2, 4).equals(playedUci.get(i - 1).substring(2, 4));
+            inBook = inBook && OpeningBook.contains(fens.get(i + 1));
             MoveFacts facts = new MoveFacts(drop, playedBest, given, gap, recapture,
-                    before.legalMoves().size(), winBefore, winAfter);
+                    before.legalMoves().size(), winBefore, winAfter, inBook,
+                    i == 0 ? null : previousDrop, i == 0 ? null : 100 - previousBefore);
+            previousDrop = drop;
+            previousBefore = winBefore;
 
             moves.add(new AnalyzedMove(i + 1, mover, evalAfter.cp(), evalAfter.mate(),
                     evalBefore.bestMoveUci(), bestSan, cpLoss,
@@ -94,14 +117,21 @@ public final class MoveAnalyzer {
     }
 
     /**
+     * Book: a known opening move (and not a mistake: theory can't hide a blunder).
      * Brilliant (!!): a good SACRIFICE. The move gives away at least {@value #SACRIFICE_PAWNS} pawns'
      *   worth of material, yet it's the best move (or within {@value #NEAR_BEST}%), you weren't already
      *   completely winning, and you're not worse off afterwards.
      * Great (!): the ONLY good move. You found the best move while the second-best was at least
      *   {@value #ONLY_MOVE_GAP}% worse. Simple recaptures and positions with 1-2 legal moves don't count.
+     * Miss: the opponent's last move was a mistake (lost at least {@value #OPPONENT_MISTAKE}%), and
+     *   your move gave at least 10% of that chance back, but you're still no worse off than before
+     *   their mistake (if you are, it's a plain Mistake/Blunder instead).
      * Everything else: by how much winning chance the move lost (below).
      */
     static Classification classify(MoveFacts f) {
+        if (f.book() && f.winDrop() < 10) {
+            return Classification.BOOK;
+        }
         boolean asGoodAsBest = f.playedBest() || f.winDrop() < NEAR_BEST;
         if (asGoodAsBest && f.materialGivenUp() >= SACRIFICE_PAWNS && f.winBefore() < 97 && f.winAfter() >= 40) {
             return Classification.BRILLIANT;
@@ -109,6 +139,10 @@ public final class MoveAnalyzer {
         if (f.playedBest() && f.onlyMoveGap() != null && f.onlyMoveGap() >= ONLY_MOVE_GAP
                 && !f.recapture() && f.legalMoveCount() >= 3) {
             return Classification.GREAT;
+        }
+        if (f.opponentDrop() != null && f.opponentDrop() >= OPPONENT_MISTAKE && f.winDrop() >= 10
+                && f.winAfter() >= f.winBeforeOpponent()) {
+            return Classification.MISS;
         }
         return classify(f.winDrop(), f.playedBest());
     }

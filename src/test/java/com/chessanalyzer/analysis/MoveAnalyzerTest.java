@@ -79,9 +79,32 @@ class MoveAnalyzerTest {
     }
 
     @Test
+    void missingTheOpponentsMistakeIsAMiss() {
+        // MoveFacts(drop, best, given, gap, recapture, legal, winBefore, winAfter, book, opponentDrop, winBeforeOpponent)
+        // They blundered (50% -> my 80%); I gave most of it back but I'm still at 55% >= 50%: Miss.
+        assertEquals(Classification.MISS, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(25, false, 0, null, false, 30, 80, 55, false, 30.0, 50.0)));
+        // Same, but I ended up worse than before their mistake (45% < 50%): a real Mistake.
+        assertEquals(Classification.MISTAKE, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(25, false, 0, null, false, 30, 70, 45, false, 30.0, 50.0)));
+        // Their move was only an inaccuracy (15%): no "chance" to miss, a normal label.
+        assertEquals(Classification.INACCURACY, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(12, false, 0, null, false, 30, 65, 53, false, 15.0, 50.0)));
+    }
+
+    @Test
+    void bookMovesAreBookUnlessTheyAreMistakes() {
+        assertEquals(Classification.BOOK, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(3, false, 0, null, false, 20, 52, 49, true, null, null)));
+        assertEquals(Classification.MISTAKE, MoveAnalyzer.classify(
+                new MoveAnalyzer.MoveFacts(22, false, 0, null, false, 20, 52, 30, true, null, null)));
+    }
+
+    @Test
     void bxf7SacrificeInARealPositionIsBrilliant() {
-        // Italian Game, 4. Bxf7+!? with hand-written scores saying it's the best move and fine for white.
-        String fen = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+        // Italian Game (with an extra h3, so it's NOT opening theory: Bxf7+ there would be "Book"),
+        // Bxf7+!? with hand-written scores saying it's the best move and fine for white.
+        String fen = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N1P/PPPP1PP1/RNBQK2R w KQkq - 0 4";
         String after = Board.fromFen(fen).makeMove(Move.fromUci("c4f7")).toFen();
         MoveAnalyzer.Result r = MoveAnalyzer.analyze(List.of(fen, after), List.of("c4f7"), List.of(
                 new Evaluation(40, null, "c4f7", -20, null),
@@ -105,12 +128,13 @@ class MoveAnalyzerTest {
         MoveAnalyzer.Result result = MoveAnalyzer.analyze(positions(played), played, evals);
         List<MoveAnalyzer.AnalyzedMove> moves = result.moves();
 
-        assertEquals(Classification.GOOD, moves.get(0).classification());      // f3: small drop
-        assertEquals(Classification.BEST, moves.get(1).classification());      // e5 = engine's choice
-        assertEquals(Classification.BLUNDER, moves.get(2).classification());   // g4 allows mate
+        // Fool's mate is in the opening list ("Barnes Opening: Fool's Mate")...
+        assertEquals(Classification.BOOK, moves.get(0).classification());      // f3: theory, small drop
+        assertEquals(Classification.BOOK, moves.get(1).classification());      // e5
+        assertEquals(Classification.BLUNDER, moves.get(2).classification());   // ...but theory never hides a blunder
         assertEquals(950, moves.get(2).cpLoss());                              // -50 -> "mate" (-1000)
         assertEquals("d4", moves.get(2).bestMoveSan());
-        assertEquals(Classification.BEST, moves.get(3).classification());
+        assertEquals(Classification.BOOK, moves.get(3).classification());
         assertEquals("Qh4#", moves.get(3).bestMoveSan());
         assertEquals(0, moves.get(3).mateIn());
 

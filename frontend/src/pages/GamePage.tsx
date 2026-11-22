@@ -2,16 +2,21 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Link, useParams } from 'react-router'
 import {
-  api, type Analysis, type Color, type EngineName, type GameDetail, type LegalMove, type MoveEval, type PositionEval,
+  api, type Analysis, type Color, type EngineName, type GameDetail, type LegalMove, type MoveEval, type MoveView, type PositionEval,
 } from '../api'
 import { CLASSIFICATION, explain, formatEval, moverOf, whiteWinPercent } from '../chess'
 import EvalBar from '../components/EvalBar'
 import EvalGraph from '../components/EvalGraph'
+import KeyMoments from '../components/KeyMoments'
 import MoveList from '../components/MoveList'
+import RetryCard from '../components/RetryCard'
 import VariationCard from '../components/VariationCard'
+import { judgeRetry, type RetryVerdict } from '../retry'
 import { asMoveEval, playInVariation, stepState, type Variation } from '../variation'
 import { useTheme } from '../theme'
 import { useBoardInput } from '../boardInput'
+import { PHASES, phaseAccuracy } from '../report'
+import { useMoveSound } from '../sounds'
 
 /** The two engines the backend offers, with sensible depth choices for each. */
 const ENGINES: Record<EngineName, { label: string; depths: { value: number; label: string }[]; defaultDepth: number }> = {
@@ -60,11 +65,18 @@ export default function GamePage() {
   // Legal moves / live engine eval, each remembered together with the FEN they belong to.
   const [legal, setLegal] = useState<{ fen: string; moves: LegalMove[] } | null>(null)
   const [liveEval, setLiveEval] = useState<{ fen: string; eval: PositionEval } | null>(null)
+  // Retrying one of your mistakes: which game move, and how your try went (null = not tried yet).
+  const [retry, setRetry] = useState<{ ply: number; verdict: RetryVerdict | null } | null>(null)
 
   // The position on the board: inside your variation, or the game's position at `ply`.
   const mainFen = game ? (ply === 0 ? game.startFen : game.moves[ply - 1].fenAfter) : null
   const exploringFen = variation && variation.index > 0 ? variation.moves[variation.index - 1].fenAfter : null
   const boardFen = exploringFen ?? mainFen
+
+  // A sound when stepping forward through the game or your own line.
+  const soundPly = variation ? variation.fromPly + variation.index : ply
+  const soundSan = variation && variation.index > 0 ? variation.moves[variation.index - 1].san : game?.moves[ply - 1]?.san
+  useMoveSound(soundPly, soundSan)
 
   // Drag or tap to move (hooks must run on every render, so this sits above the early returns).
   const input = useBoardInput({
@@ -202,10 +214,12 @@ export default function GamePage() {
   const exploring = variation !== null && variation.index > 0
   const variationEval = exploring && liveEval?.fen === exploringFen ? liveEval.eval : null
   const variationPly = variation ? variation.fromPly + variation.index : ply
+  // Retry mode lasts while the board sits on the position before that mistake (moving away ends it).
+  const retrying = retry !== null && (variation?.fromPly ?? ply) === retry.ply - 1 ? retry : null
 
   // Highlight the last move. Game moves: yellow, or red/orange for a mistake/blunder. Your moves: blue.
   let lastMove: string | null = ply > 0 ? moves[ply - 1].uci : null
-  let tint = currentEval && ['INACCURACY', 'MISTAKE', 'BLUNDER'].includes(currentEval.classification)
+  let tint = currentEval && ['INACCURACY', 'MISS', 'MISTAKE', 'BLUNDER'].includes(currentEval.classification)
     ? `color-mix(in srgb, ${CLASSIFICATION[currentEval.classification].color} 60%, transparent)`
     : 'rgba(255, 214, 79, 0.55)'
   if (exploring) {
@@ -224,7 +238,8 @@ export default function GamePage() {
   // Green arrow = the engine's best move in the CURRENT position
   // (for game positions it's stored with the next move; for your own line it's the live eval).
   const nextBest = evalByPly.get(ply + 1)
-  const bestUci = exploring ? variationEval?.bestMoveUci : nextBest?.bestMoveUci
+  const bestUci = retrying && (!retrying.verdict || retrying.verdict.kind === 'checking') ? null // don't give the answer away
+    : exploring ? variationEval?.bestMoveUci : nextBest?.bestMoveUci
   const arrows = bestUci
     ? [{ startSquare: bestUci.slice(0, 2), endSquare: bestUci.slice(2, 4), color: 'rgba(129, 182, 76, 0.85)' }]
     : []
@@ -236,6 +251,10 @@ export default function GamePage() {
 
   /** A move you dragged or tapped (already checked against the legal moves by useBoardInput). */
   function playMove(move: LegalMove) {
+    if (retrying && !variation && !retrying.verdict) {
+      void tryRetry(retrying.ply, move)
+      return
+    }
     // Played the same move as the real game, from a game position? Just follow the game.
     const atGamePosition = !variation || variation.index === 0
     const gamePly = variation?.fromPly ?? ply
@@ -244,6 +263,25 @@ export default function GamePage() {
       return
     }
     setVariation(playInVariation(variation, ply, move))
+  }
+
+  /** Retry: go back to just before the mistake. */
+  function startRetry(p: number) {
+    go(p - 1)
+    setRetry({ ply: p, verdict: null })
+  }
+
+  /** Show your try on the board and let Stockfish judge it. */
+  async function tryRetry(p: number, move: LegalMove) {
+    setVariation(playInVariation(null, p - 1, move))
+    setRetry({ ply: p, verdict: { kind: 'checking', text: '' } })
+    let verdict: RetryVerdict
+    try {
+      verdict = await judgeRetry(game!, evalByPly, p, move)
+    } catch (e) {
+      verdict = { kind: 'wrong', text: (e as Error).message }
+    }
+    setRetry((r) => (r?.ply === p ? { ply: p, verdict } : r)) // ignore if you already moved on
   }
 
   const bottom: Color = flipped ? 'BLACK' : 'WHITE'
@@ -304,7 +342,7 @@ export default function GamePage() {
               <strong>{summary.white} vs {summary.black}</strong>
               <div className="muted small">
                 {/* Only show the parts we know (a pasted FEN has no result, time control or opening). */}
-                {[summary.result !== '*' && summary.result, summary.timeClass, summary.openingEco,
+                {[summary.result !== '*' && summary.result, summary.timeClass, game.opening ?? summary.openingEco,
                   new Date(summary.playedAt).toLocaleDateString(), summary.source === 'PASTED' && 'pasted']
                   .filter(Boolean).join(' · ')}
                 {game.chesscomUrl && <>{' · '}<a href={game.chesscomUrl} target="_blank" rel="noopener noreferrer">Chess.com ↗</a></>}
@@ -313,11 +351,16 @@ export default function GamePage() {
           </div>
         </div>
 
-        {variation
+        {retrying
+          ? <RetryCard ply={retrying.ply} game={game} verdict={retrying.verdict}
+                       onTryAgain={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: null }) }}
+                       onReveal={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: { kind: 'revealed', text: `The best move was ${evalByPly.get(retrying.ply)?.bestMoveSan} (green arrow).` } }) }}
+                       onBack={() => { go(retrying.ply); setRetry(null) }} />
+          : variation
           ? <VariationCard variation={variation} startFen={startFen} evaluation={variationEval}
                            onSelect={(index) => setVariation({ ...variation, index })}
                            onExit={() => setVariation(null)} />
-          : <MoveInsight ply={ply} game={game} evaluation={currentEval} nextBest={nextBest} />}
+          : <MoveInsight ply={ply} game={game} evaluation={currentEval} nextBest={nextBest} onRetry={() => startRetry(ply)} />}
 
         {total > 0 && (
           <div className="card compact">
@@ -329,8 +372,9 @@ export default function GamePage() {
         {total > 0 && (
           <AnalysisCard analysis={analysis} running={running} starting={starting}
                         engine={engine} setEngine={chooseEngine} depth={depth}
-                        setDepth={setDepth} onStart={startAnalysis} startFen={startFen} />
+                        setDepth={setDepth} onStart={startAnalysis} startFen={startFen} moves={moves} />
         )}
+        {hasEvals && !retrying && <KeyMoments game={game} evals={evals} onSelect={go} />}
       </aside>
     </div>
   )
@@ -354,11 +398,12 @@ function PlayerBar({ color, game, analysis }: { color: Color; game: GameDetail; 
 }
 
 /** The box that explains the current move: its verdict and what was better. */
-function MoveInsight({ ply, game, evaluation, nextBest }: {
+function MoveInsight({ ply, game, evaluation, nextBest, onRetry }: {
   ply: number
   game: GameDetail
   evaluation: MoveEval | undefined
   nextBest: MoveEval | undefined
+  onRetry: () => void
 }) {
   if (ply === 0) {
     const noMoves = game.moves.length === 0   // a pasted FEN
@@ -385,10 +430,13 @@ function MoveInsight({ ply, game, evaluation, nextBest }: {
       </div>
       {evaluation && explain(evaluation, move.uci) && <span className="small why">{explain(evaluation, move.uci)}</span>}
       {evaluation && evaluation.bestMoveSan && evaluation.bestMoveUci !== move.uci
-        && !['BRILLIANT', 'GREAT', 'BEST'].includes(evaluation.classification) && (
+        && !['BOOK', 'BRILLIANT', 'GREAT', 'BEST'].includes(evaluation.classification) && (
         <span className="small">Best was <strong>{evaluation.bestMoveSan}</strong>
           {evaluation.cpLoss ? <span className="muted"> (you lost {(evaluation.cpLoss / 100).toFixed(1)} pawns)</span> : null}
         </span>
+      )}
+      {evaluation?.bestMoveUci && ['MISS', 'MISTAKE', 'BLUNDER'].includes(evaluation.classification) && (
+        <button className="btn small-btn retry-btn" onClick={onRetry}>↻ Retry: find a better move</button>
       )}
       {nextBest?.bestMoveSan && (
         <span className="muted small">Engine's move here: <strong className="best-text">{nextBest.bestMoveSan}</strong> (green arrow)</span>
@@ -398,7 +446,7 @@ function MoveInsight({ ply, game, evaluation, nextBest }: {
 }
 
 /** Start an analysis, show its progress, then a summary of mistakes per player. */
-function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, setDepth, onStart, startFen }: {
+function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, setDepth, onStart, startFen, moves }: {
   analysis: Analysis | null
   running: boolean
   starting: boolean
@@ -408,6 +456,7 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
   setDepth: (d: number) => void
   onStart: () => void
   startFen: string
+  moves: MoveView[]
 }) {
   const engineLabel = ENGINES[engine].label
 
@@ -464,7 +513,7 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
   }
 
   // Count verdicts per player.
-  const kinds = ['BRILLIANT', 'GREAT', 'BEST', 'INACCURACY', 'MISTAKE', 'BLUNDER'] as const
+  const kinds = ['BRILLIANT', 'GREAT', 'BEST', 'BOOK', 'INACCURACY', 'MISTAKE', 'MISS', 'BLUNDER'] as const
   const count = (color: Color, kind: string) =>
     analysis.moves.filter((m) => m.classification === kind && moverOf(m.ply, startFen) === color).length
 
@@ -482,6 +531,19 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
             <td><strong>{analysis.accuracyWhite?.toFixed(1) ?? '–'}%</strong></td>
             <td><strong>{analysis.accuracyBlack?.toFixed(1) ?? '–'}%</strong></td>
           </tr>
+          {/* Accuracy per phase of the game (see report.ts for where each phase starts). */}
+          {PHASES.map((phase) => {
+            const white = phaseAccuracy(moves, analysis.moves, startFen, 'WHITE', phase)
+            const black = phaseAccuracy(moves, analysis.moves, startFen, 'BLACK', phase)
+            if (white === null && black === null) return null
+            return (
+              <tr key={phase} className="phase-row">
+                <td>{phase}</td>
+                <td>{white === null ? '–' : `${white.toFixed(0)}%`}</td>
+                <td>{black === null ? '–' : `${black.toFixed(0)}%`}</td>
+              </tr>
+            )
+          })}
           {kinds.map((k) => (
             <tr key={k}>
               <td><span style={{ color: CLASSIFICATION[k].color }}>{CLASSIFICATION[k].symbol}</span> {CLASSIFICATION[k].label}</td>
@@ -494,12 +556,16 @@ function AnalysisCard({ analysis, running, starting, engine, setEngine, depth, s
       <details className="rating-help">
         <summary>How are moves rated?</summary>
         <ul>
+          <li><Mark kind="BOOK" /> <strong>Book</strong>: a known opening move (from a list of about 3,500 named openings),
+            as long as it isn't a mistake.</li>
           <li><Mark kind="BRILLIANT" /> <strong>Brilliant</strong>: a good <em>sacrifice</em>. You gave away at least a piece's
             worth for a pawn (or a rook for a minor piece), it was the best move or within 2% of it, you weren't
             already completely winning, and you're not worse off afterwards.</li>
           <li><Mark kind="GREAT" /> <strong>Great</strong>: the <em>only good move</em>. You found Stockfish's best move while the
             next-best move was at least 15% worse. Simple recaptures don't count.</li>
           <li><Mark kind="BEST" /> <strong>Best</strong>: Stockfish's first choice.</li>
+          <li><Mark kind="MISS" /> <strong>Miss</strong>: your opponent just made a mistake (lost 20% or more), and your
+            move gave at least 10% of that chance back, though you're still no worse off than before their mistake.</li>
           <li><strong>Good / Inaccuracy / Mistake / Blunder</strong>: how much of your winning chance the move cost:
             under 10% / 10–20% / 20–30% / 30% or more.</li>
         </ul>

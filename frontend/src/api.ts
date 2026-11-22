@@ -5,7 +5,7 @@
 
 export type Color = 'WHITE' | 'BLACK'
 export type Outcome = 'WIN' | 'LOSS' | 'DRAW' | 'UNKNOWN'
-export type Classification = 'BRILLIANT' | 'GREAT' | 'BEST' | 'GOOD' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER'
+export type Classification = 'BOOK' | 'BRILLIANT' | 'GREAT' | 'BEST' | 'GOOD' | 'MISS' | 'INACCURACY' | 'MISTAKE' | 'BLUNDER'
 export type AnalysisStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED'
 export type EngineName = 'stockfish' | 'my-engine' // must match EngineFactory.STOCKFISH / MY_ENGINE
 
@@ -44,6 +44,7 @@ export interface GameDetail {
   chesscomUrl: string | null // null for pasted games
   startFen: string
   moves: MoveView[]
+  opening: string | null // e.g. "Italian Game: Two Knights Defense" (from the server's opening list)
 }
 
 export interface MoveEval {

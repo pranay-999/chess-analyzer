@@ -14,7 +14,8 @@ Built with **Java 21 · Spring Boot 4 · PostgreSQL · React + TypeScript · Doc
 - **Import** all games of any Chess.com player (public API), incrementally: re-syncs only fetch new months.
 - **Replay** games on an interactive board with keyboard navigation.
 - **Engine analysis** of every move as a background job with live progress:
-  **Brilliant !!** (good sacrifices) / **Great !** (only good move) / Best / Good / Inaccuracy / Mistake / Blunder,
+  **Book** (opening theory) / **Brilliant !!** (good sacrifices) / **Great !** (only good move) / Best / Good / Inaccuracy /
+  Mistake / **Miss** (didn't punish the opponent's mistake) / Blunder, **Retry** any mistake, accuracy per game phase, key moments,
   with a sentence explaining *why*, the move you should have played,
   a label badge on the board itself, your own arrows (right-drag) and marked squares (right-click),
   accuracy %, an evaluation bar, and a clickable evaluation graph.

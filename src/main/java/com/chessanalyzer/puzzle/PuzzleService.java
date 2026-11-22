@@ -38,7 +38,7 @@ import java.util.Set;
 public class PuzzleService {
 
     private static final Logger log = LoggerFactory.getLogger(PuzzleService.class);
-    private static final Set<Classification> PUZZLE_WORTHY = Set.of(Classification.MISTAKE, Classification.BLUNDER);
+    private static final Set<Classification> PUZZLE_WORTHY = Set.of(Classification.MISS, Classification.MISTAKE, Classification.BLUNDER);
     /** An answer other than Stockfish's still counts if it loses less than this much winning chance. */
     static final double ALSO_GOOD_MAX_DROP = 5.0;
     private static final int CHECK_DEPTH = 12;

@@ -6,6 +6,7 @@ import { formatClock, newClock, pressClock, remaining, TIME_CONTROLS, type Clock
 import MoveList from '../components/MoveList'
 import { useTheme } from '../theme'
 import { useBoardInput } from '../boardInput'
+import { useGameEndSound, useLowTimeWarning, useMoveSound } from '../sounds'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -66,6 +67,8 @@ export default function PlayPage() {
   const playing = game !== null && game.end === null
   const yourTurn = playing && sideToMove === game.you
   const botTurn = playing && sideToMove !== game.you
+  useMoveSound(game?.moves.length ?? 0, game?.moves.at(-1)?.san) // tock / capture / check…
+  useGameEndSound(game?.end != null)
 
   // Drag or tap to move; only on your turn, and only moves from the server's legal list.
   const input = useBoardInput({
@@ -270,6 +273,7 @@ function PlayerRow({ name, rating, color, game, sideToMove, now, thinking }: {
 }) {
   const running = game !== null && game.end === null && sideToMove === color
   const ms = game?.clock ? remaining(game.clock, color, game.end ? other(color) : sideToMove, game.end ? game.clock.runningSince : now) : null
+  useLowTimeWarning(game?.you === color ? ms : null, running) // beeps under 10 s, your clock only
   return (
     <div className="player-bar">
       <span className={`piece-dot ${color === 'WHITE' ? 'white' : 'black'}`} />

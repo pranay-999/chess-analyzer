@@ -8,6 +8,7 @@ import MoveList from '../components/MoveList'
 import { useTopic } from '../live'
 import { useTheme } from '../theme'
 import { useBoardInput } from '../boardInput'
+import { useGameEndSound, useLowTimeWarning, useMoveSound } from '../sounds'
 
 /**
  * "/online/:id" — a live game. The SERVER owns the game: we send a move with a POST,
@@ -40,6 +41,8 @@ export default function OnlineGamePage() {
     : game.white?.username === user.username ? 'WHITE'
       : game.black?.username === user.username ? 'BLACK' : null
   const yourTurn = game?.status === 'ACTIVE' && you === game.sideToMove
+  useMoveSound(game?.moves.length ?? 0, game?.moves.at(-1)?.san) // also plays your opponent's moves
+  useGameEndSound(game?.status === 'FINISHED')
 
   // Legal moves for a dropped piece, fetched when it's our turn.
   const fen = game?.fen
@@ -109,7 +112,7 @@ export default function OnlineGamePage() {
   return (
     <div className="game-layout">
       <div className="board-column">
-        <PlayerRow color={top} game={game} ms={clockOf(top)} />
+        <PlayerRow color={top} game={game} ms={clockOf(top)} mine={top === you} />
         <div className="board">
           <Chessboard key={boardKey} options={{
             id: 'online-board',
@@ -126,7 +129,7 @@ export default function OnlineGamePage() {
             ...boardColors,
           }} />
         </div>
-        <PlayerRow color={bottom} game={game} ms={clockOf(bottom)} />
+        <PlayerRow color={bottom} game={game} ms={clockOf(bottom)} mine={bottom === you} />
       </div>
 
       <aside className="side-column">
@@ -190,9 +193,10 @@ export default function OnlineGamePage() {
   )
 }
 
-function PlayerRow({ color, game, ms }: { color: Color; game: OnlineGame; ms: number | null }) {
+function PlayerRow({ color, game, ms, mine }: { color: Color; game: OnlineGame; ms: number | null; mine: boolean }) {
   const player = color === 'WHITE' ? game.white : game.black
   const running = game.clockRunning && game.sideToMove === color
+  useLowTimeWarning(mine ? ms : null, running) // beeps under 10 s, your clock only
   return (
     <div className="player-bar">
       <span className={`piece-dot ${color === 'WHITE' ? 'white' : 'black'}`} />

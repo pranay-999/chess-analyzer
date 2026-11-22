@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Route, Routes, useLocation, useParams } from '
 import { useAuth } from './auth'
 import ErrorBoundary from './components/ErrorBoundary'
 import ThemePicker from './components/ThemePicker'
+import { setSoundOn, useSoundOn } from './sounds'
 import AnalyzePage from './pages/AnalyzePage'
 import GamePage from './pages/GamePage'
 import HomePage from './pages/HomePage'
@@ -18,6 +19,7 @@ import StatsPage from './pages/StatsPage'
 export default function App() {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
+  const soundOn = useSoundOn()
   return (
     <>
       <header className="topbar">
@@ -34,6 +36,9 @@ export default function App() {
         </nav>
         <div className="account">
           <ThemePicker />
+          <button className="btn small-btn" onClick={() => setSoundOn(!soundOn)}
+                  title={soundOn ? 'Sounds on (click to mute)' : 'Sounds off (click to turn on)'}
+                  aria-label={soundOn ? 'Mute sounds' : 'Turn sounds on'}>{soundOn ? '🔊' : '🔇'}</button>
           {user ? (
             <>
               <span className="muted small">{user.username}</span>

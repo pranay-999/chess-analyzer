@@ -36,10 +36,12 @@ export function formatEval(evaluation: MoveEval | undefined, ply: number, startF
 }
 
 export const CLASSIFICATION: Record<Classification, { label: string; symbol: string; color: string }> = {
+  BOOK: { label: 'Book', symbol: '📖', color: 'var(--book)' },
   BRILLIANT: { label: 'Brilliant', symbol: '!!', color: 'var(--brilliant)' },
   GREAT: { label: 'Great', symbol: '!', color: 'var(--great)' },
   BEST: { label: 'Best', symbol: '★', color: 'var(--best)' },
   GOOD: { label: 'Good', symbol: '', color: 'var(--good)' },
+  MISS: { label: 'Miss', symbol: '✗', color: 'var(--miss)' },
   INACCURACY: { label: 'Inaccuracy', symbol: '?!', color: 'var(--inaccuracy)' },
   MISTAKE: { label: 'Mistake', symbol: '?', color: 'var(--mistake)' },
   BLUNDER: { label: 'Blunder', symbol: '??', color: 'var(--blunder)' },
@@ -51,6 +53,10 @@ export function explain(e: MoveEval, playedUci: string): string | null {
   if (drop === null) return null // analysed before the reasons were stored: re-analyse to see them
   const pct = (n: number) => `${Math.round(n)}%`
   switch (e.classification) {
+    case 'BOOK':
+      return 'A known opening move: it is in the opening theory list.'
+    case 'MISS':
+      return `Your opponent's last move was a mistake, but this move let the chance slip: it cost ${pct(drop)} of your winning chance.`
     case 'BRILLIANT':
       return `A good sacrifice: you gave away about ${e.materialGivenUp} pawns' worth of material on purpose, and it was ${
         e.bestMoveUci === playedUci ? "Stockfish's best move" : 'as good as the best move'}.`

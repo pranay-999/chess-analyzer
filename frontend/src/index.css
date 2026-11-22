@@ -200,6 +200,8 @@ a.btn { text-decoration: none; justify-content: center; }
 :root {
   --brilliant: #1fa9a0;   /* teal, like the usual "!!" colour */
   --great: #5b8fc7;       /* blue "!" */
+  --book: #a5845f;        /* brown, like a book cover */
+  --miss: #d0547f;        /* rose: not as bad as a blunder's red, but a chance thrown away */
 }
 .why { color: var(--text); }
 .rating-help summary { cursor: pointer; font-size: 13px; color: var(--muted); }
@@ -481,6 +483,12 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .variation-line { display: flex; flex-wrap: wrap; gap: 2px; }
 .variation-line .move { gap: 4px; }
 .small-btn { margin-left: auto; padding: 4px 10px; font-size: 13px; }
+.retry-btn { margin-left: 0; align-self: flex-start; }
+.phase-row td { color: var(--muted); font-size: 13px; }
+.phase-row td:first-child { padding-left: 12px; }
+.key-moments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.key-moments li { display: flex; flex-direction: column; gap: 2px; }
+.key-moments .link-btn { text-decoration: none; color: var(--text); text-align: left; }
 .spinner.inline { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; margin-right: 4px; }
 
 .engine-tabs { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 8px; margin-bottom: 4px; }
