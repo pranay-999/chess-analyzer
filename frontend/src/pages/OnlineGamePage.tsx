@@ -3,8 +3,9 @@ import { Chessboard } from 'react-chessboard'
 import { Link, useNavigate, useParams } from 'react-router'
 import { api, type Color, type LegalMove, type OnlineGame } from '../api'
 import { useAuth } from '../auth'
-import { formatClock, timeLabel } from '../clock'
+import { timeLabel } from '../clock'
 import MoveList from '../components/MoveList'
+import PlayerStrip from '../components/PlayerStrip'
 import { useTopic } from '../live'
 import { useTheme } from '../theme'
 import { useBoardInput } from '../boardInput'
@@ -133,61 +134,63 @@ export default function OnlineGamePage() {
       </div>
 
       <aside className="side-column">
-        <div className="card compact">
-          <strong>Online game · {timeLabel(game.initialMs, game.incrementMs)}</strong>
-
-          {game.status === 'WAITING' && isCreator && (
-            <>
-              <span className="muted small"><span className="spinner inline" /> Waiting for an opponent. Send them this link:</span>
-              <div className="invite">
-                <input readOnly value={inviteLink} onFocus={(e) => e.target.select()} aria-label="Invite link" />
-                <button className="btn" onClick={() => { void navigator.clipboard?.writeText(inviteLink); setCopied(true) }}>
-                  {copied ? 'Copied' : 'Copy'}
+        <div className="game-panel">
+          <div className="panel-tabs"><span className="panel-tab active">Online game · {timeLabel(game.initialMs, game.incrementMs)}</span></div>
+          <div className="panel-body">
+            {game.status === 'WAITING' && isCreator && (
+              <>
+                <span className="muted small"><span className="spinner inline" /> Waiting for an opponent. Send them this link:</span>
+                <div className="invite">
+                  <input readOnly value={inviteLink} onFocus={(e) => e.target.select()} aria-label="Invite link" />
+                  <button className="btn" onClick={() => { void navigator.clipboard?.writeText(inviteLink); setCopied(true) }}>
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <button className="btn" onClick={() => act(() => api.cancelOnline(game.id))}>Cancel game</button>
+              </>
+            )}
+            {game.status === 'WAITING' && !isCreator && (
+              <>
+                <span className="muted small">{game.creator} is waiting for an opponent.</span>
+                <button className="btn primary" onClick={() => act(() => api.joinOnline(game.id))}>
+                  Join as {game.white ? 'Black' : 'White'}
                 </button>
-              </div>
-              <button className="btn" onClick={() => act(() => api.cancelOnline(game.id))}>Cancel game</button>
-            </>
-          )}
-          {game.status === 'WAITING' && !isCreator && (
-            <>
-              <span className="muted small">{game.creator} is waiting for an opponent.</span>
-              <button className="btn primary" onClick={() => act(() => api.joinOnline(game.id))}>
-                Join as {game.white ? 'Black' : 'White'}
-              </button>
-            </>
-          )}
-          {game.status === 'ACTIVE' && (
-            <>
-              <span className="muted small">
-                {you === null ? 'You are watching.' : yourTurn ? 'Your move: drag or tap a piece.' : 'Waiting for your opponent…'}
-              </span>
-              {you && <button className="btn" onClick={() => act(() => api.resignOnline(game.id))}>⚑ Resign</button>}
-            </>
-          )}
-          {game.status === 'FINISHED' && (
-            <>
-              <OnlineResult game={game} you={you} />
-              {game.analysisGameId && (
-                <button className="btn primary" onClick={() => navigate(`/games/${game.analysisGameId}`)}>Analyse this game</button>
-              )}
-              <Link to="/online" className="btn">Back to the lobby</Link>
-            </>
-          )}
-          {game.status === 'ABORTED' && (
-            <>
-              <span>This game was cancelled.</span>
-              <Link to="/online" className="btn">Back to the lobby</Link>
-            </>
-          )}
-          {error && <span className="error small">{error}</span>}
-        </div>
-
-        {game.moves.length > 0 && (
-          <div className="card compact">
-            <MoveList moves={game.moves.map((m, i) => ({ ...m, ply: i + 1 }))} evals={new Map()}
-                      currentPly={game.moves.length} onSelect={() => {}} />
+              </>
+            )}
+            {game.status === 'ACTIVE' && (
+              <>
+                <span className="muted small">
+                  {you === null ? 'You are watching.' : yourTurn ? 'Your move: drag or tap a piece.' : 'Waiting for your opponent…'}
+                </span>
+              </>
+            )}
+            {game.status === 'FINISHED' && (
+              <>
+                <OnlineResult game={game} you={you} />
+                {game.analysisGameId && (
+                  <button className="btn primary" onClick={() => navigate(`/games/${game.analysisGameId}`)}>Analyse this game</button>
+                )}
+                <Link to="/online" className="btn">Back to the lobby</Link>
+              </>
+            )}
+            {game.status === 'ABORTED' && (
+              <>
+                <span>This game was cancelled.</span>
+                <Link to="/online" className="btn">Back to the lobby</Link>
+              </>
+            )}
+            {error && <span className="error small">{error}</span>}
+            {game.moves.length > 0 && (
+              <MoveList moves={game.moves.map((m, i) => ({ ...m, ply: i + 1 }))} evals={new Map()}
+                        currentPly={game.moves.length} onSelect={() => {}} />
+            )}
           </div>
-        )}
+          {game.status === 'ACTIVE' && you && (
+            <div className="panel-actions">
+              <button className="btn" onClick={() => act(() => api.resignOnline(game.id))}>⚑ Resign</button>
+            </div>
+          )}
+        </div>
       </aside>
     </div>
   )
@@ -198,14 +201,8 @@ function PlayerRow({ color, game, ms, mine }: { color: Color; game: OnlineGame; 
   const running = game.clockRunning && game.sideToMove === color
   useLowTimeWarning(mine ? ms : null, running) // beeps under 10 s, your clock only
   return (
-    <div className="player-bar">
-      <span className={`piece-dot ${color === 'WHITE' ? 'white' : 'black'}`} />
-      <strong>{player?.username ?? 'Waiting…'}</strong>
-      {player?.guest && <span className="tag plain">guest</span>}
-      {ms !== null && (
-        <span className={`clock ${running ? 'running' : ''} ${running && ms < 20_000 ? 'low' : ''}`}>{formatClock(ms)}</span>
-      )}
-    </div>
+    <PlayerStrip name={player?.username ?? 'Waiting…'} color={color} fen={game.fen} clockMs={ms} running={running}
+                 tags={<>{player?.guest && <span className="tag plain">guest</span>}{mine && <span className="tag you">you</span>}</>} />
   )
 }
 

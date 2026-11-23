@@ -38,7 +38,7 @@ function save(key: string, value: string) {
 const prefersDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeName>(() => load('theme', 'auto'))
+  const [theme, setThemeState] = useState<ThemeName>(() => load('theme', 'club'))
   const [board, setBoardState] = useState<BoardName>(() => load('board', 'theme'))
   const [systemDark, setSystemDark] = useState(prefersDark)
 

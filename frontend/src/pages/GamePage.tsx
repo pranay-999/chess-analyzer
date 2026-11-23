@@ -9,6 +9,8 @@ import EvalBar from '../components/EvalBar'
 import EvalGraph from '../components/EvalGraph'
 import KeyMoments from '../components/KeyMoments'
 import MoveList from '../components/MoveList'
+import NavButtons from '../components/NavButtons'
+import PlayerStrip from '../components/PlayerStrip'
 import RetryCard from '../components/RetryCard'
 import VariationCard from '../components/VariationCard'
 import { judgeRetry, type RetryVerdict } from '../retry'
@@ -67,6 +69,8 @@ export default function GamePage() {
   const [liveEval, setLiveEval] = useState<{ fen: string; eval: PositionEval } | null>(null)
   // Retrying one of your mistakes: which game move, and how your try went (null = not tried yet).
   const [retry, setRetry] = useState<{ ply: number; verdict: RetryVerdict | null } | null>(null)
+  const [tab, setTab] = useState<'moves' | 'report' | 'info'>('moves') // the side panel's tabs
+  const [autoplay, setAutoplay] = useState(false)                      // ⏵: step through the game by itself
 
   // The position on the board: inside your variation, or the game's position at `ply`.
   const mainFen = game ? (ply === 0 ? game.startFen : game.moves[ply - 1].fenAfter) : null
@@ -175,6 +179,17 @@ export default function GamePage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [game, variation, ply])
+
+  // 7. Autoplay: one move per second until the end (or until you pause / open a variation).
+  const totalMoves = game?.moves.length ?? 0
+  useEffect(() => {
+    if (!autoplay || variation) return
+    const timer = setTimeout(() => {
+      if (ply >= totalMoves) setAutoplay(false)
+      else setPly(ply + 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [autoplay, variation, ply, totalMoves])
 
   async function startAnalysis() {
     if (!game) return
@@ -287,11 +302,28 @@ export default function GamePage() {
   const bottom: Color = flipped ? 'BLACK' : 'WHITE'
   const top: Color = flipped ? 'WHITE' : 'BLACK'
 
+  const strip = (color: Color) => {
+    const accuracy = analysis?.status === 'DONE' ? (color === 'WHITE' ? analysis.accuracyWhite : analysis.accuracyBlack) : null
+    return (
+      <PlayerStrip color={color} fen={fen} startFen={startFen}
+                   name={color === 'WHITE' ? summary.white : summary.black}
+                   rating={color === 'WHITE' ? summary.whiteRating : summary.blackRating}
+                   tags={color === summary.playerColor && <span className="tag you">you</span>}
+                   right={accuracy !== null && <span className="accuracy" title="Accuracy">{accuracy.toFixed(1)}%</span>} />
+    )
+  }
+
+  const analysisCard = total > 0 && ( // a pasted FEN has no moves to analyse; drag pieces to explore it instead
+    <AnalysisCard analysis={analysis} running={running} starting={starting}
+                  engine={engine} setEngine={chooseEngine} depth={depth}
+                  setDepth={setDepth} onStart={startAnalysis} startFen={startFen} moves={moves} />
+  )
+
   return (
     <div className="game-layout">
       {/* ----- left: board ----- */}
       <div className="board-column">
-        <PlayerBar color={top} game={game} analysis={analysis} />
+        {strip(top)}
         <div className="board-wrap">
           {showBar && (
             <EvalBar whitePercent={barPly === 0 ? 50 : whiteWinPercent(barEval, barPly, startFen)}
@@ -316,83 +348,75 @@ export default function GamePage() {
             {badge && <MoveBadge square={badge.square} flipped={flipped} {...badge.info} />}
           </div>
         </div>
-        <PlayerBar color={bottom} game={game} analysis={analysis} />
-
-        <div className="controls">
-          <button className="btn icon" onClick={() => go(0)} title="Start (Home)">⏮</button>
-          <button className="btn icon" onClick={() => step(-1)} title="Previous (←)">◀</button>
-          <span className="ply-counter">
-            {variation ? `line ${variation.index} / ${variation.moves.length}` : `${ply} / ${total}`}
-          </span>
-          <button className="btn icon" onClick={() => step(1)} title="Next (→)">▶</button>
-          <button className="btn icon" onClick={() => go(total)} title="End (End)">⏭</button>
-          <button className="btn icon" onClick={() => setFlipped((f) => !f)} title="Flip board">⇅</button>
-        </div>
+        {strip(bottom)}
         {!variation && <p className="hint muted small">Tip: drag a piece, or tap it and then tap a square, to try your own move.</p>}
 
         {hasEvals && <EvalGraph evals={evals} startFen={startFen} currentPly={ply} onSelect={go} />}
       </div>
 
-      {/* ----- right: info, analysis, moves ----- */}
+      {/* ----- right: one panel with tabs, like a game screen; the move buttons stay at its bottom ----- */}
       <aside className="side-column">
-        <div className="card compact">
-          <div className="game-title">
-            <span className={`outcome ${summary.outcome}`}>{summary.outcome === 'UNKNOWN' ? '–' : summary.outcome[0]}</span>
-            <div>
-              <strong>{summary.white} vs {summary.black}</strong>
-              <div className="muted small">
-                {/* Only show the parts we know (a pasted FEN has no result, time control or opening). */}
-                {[summary.result !== '*' && summary.result, summary.timeClass, game.opening ?? summary.openingEco,
-                  new Date(summary.playedAt).toLocaleDateString(), summary.source === 'PASTED' && 'pasted']
-                  .filter(Boolean).join(' · ')}
-                {game.chesscomUrl && <>{' · '}<a href={game.chesscomUrl} target="_blank" rel="noopener noreferrer">Chess.com ↗</a></>}
+        <div className="game-panel">
+          <div className="panel-tabs" role="tablist">
+            {([['moves', 'Moves'], ['report', 'Report'], ['info', 'Info']] as const).map(([key, label]) => (
+              <button key={key} role="tab" aria-selected={tab === key}
+                      className={`panel-tab ${tab === key ? 'active' : ''}`} onClick={() => setTab(key)}>{label}</button>
+            ))}
+          </div>
+
+          <div className="panel-body">
+            {tab === 'moves' && (
+              <>
+                {retrying
+                  ? <RetryCard ply={retrying.ply} game={game} verdict={retrying.verdict}
+                               onTryAgain={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: null }) }}
+                               onReveal={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: { kind: 'revealed', text: `The best move was ${evalByPly.get(retrying.ply)?.bestMoveSan} (green arrow).` } }) }}
+                               onBack={() => { go(retrying.ply); setRetry(null) }} />
+                  : variation
+                  ? <VariationCard variation={variation} startFen={startFen} evaluation={variationEval}
+                                   onSelect={(index) => setVariation({ ...variation, index })}
+                                   onExit={() => setVariation(null)} />
+                  : <MoveInsight ply={ply} game={game} evaluation={currentEval} nextBest={nextBest} onRetry={() => startRetry(ply)} />}
+                {total > 0 && (
+                  <MoveList moves={moves} evals={evalByPly} currentPly={ply} onSelect={go}
+                            title={game.opening ?? summary.openingEco} startsWithBlack={startFen.split(' ')[1] === 'b'} />
+                )}
+                {!hasEvals && analysisCard /* until analysed, the Analyse button lives here too */}
+              </>
+            )}
+
+            {tab === 'report' && (
+              <>
+                {analysisCard || <p className="muted small">No moves to review: drag pieces to explore this position.</p>}
+                {hasEvals && !retrying && <KeyMoments game={game} evals={evals} onSelect={(p) => { go(p); setTab('moves') }} />}
+              </>
+            )}
+
+            {tab === 'info' && (
+              <div className="game-title">
+                <span className={`outcome ${summary.outcome}`}>{summary.outcome === 'UNKNOWN' ? '–' : summary.outcome[0]}</span>
+                <div>
+                  <strong>{summary.white} vs {summary.black}</strong>
+                  <div className="muted small">
+                    {/* Only show the parts we know (a pasted FEN has no result, time control or opening). */}
+                    {[summary.result !== '*' && summary.result, summary.timeClass, game.opening ?? summary.openingEco,
+                      new Date(summary.playedAt).toLocaleDateString(), summary.source === 'PASTED' && 'pasted']
+                      .filter(Boolean).join(' · ')}
+                    {game.chesscomUrl && <>{' · '}<a href={game.chesscomUrl} target="_blank" rel="noopener noreferrer">Chess.com ↗</a></>}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
+
+          <span className="ply-counter muted small">
+            {variation ? `Your line: move ${variation.index} of ${variation.moves.length}` : `Move ${ply} of ${total}`}
+          </span>
+          <NavButtons onFirst={() => go(0)} onPrev={() => step(-1)} onNext={() => step(1)} onLast={() => go(total)}
+                      onPlay={total > 0 ? () => { setVariation(null); if (!autoplay && ply >= total) setPly(0); setAutoplay(!autoplay) } : undefined} playing={autoplay}
+                      extra={<button className="nav-btn" onClick={() => setFlipped((f) => !f)} title="Flip board" aria-label="Flip board">⇅</button>} />
         </div>
-
-        {retrying
-          ? <RetryCard ply={retrying.ply} game={game} verdict={retrying.verdict}
-                       onTryAgain={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: null }) }}
-                       onReveal={() => { setVariation(null); setRetry({ ply: retrying.ply, verdict: { kind: 'revealed', text: `The best move was ${evalByPly.get(retrying.ply)?.bestMoveSan} (green arrow).` } }) }}
-                       onBack={() => { go(retrying.ply); setRetry(null) }} />
-          : variation
-          ? <VariationCard variation={variation} startFen={startFen} evaluation={variationEval}
-                           onSelect={(index) => setVariation({ ...variation, index })}
-                           onExit={() => setVariation(null)} />
-          : <MoveInsight ply={ply} game={game} evaluation={currentEval} nextBest={nextBest} onRetry={() => startRetry(ply)} />}
-
-        {total > 0 && (
-          <div className="card compact">
-            <MoveList moves={moves} evals={evalByPly} currentPly={ply} onSelect={go} />
-          </div>
-        )}
-
-        {/* A pasted FEN has no moves to analyse; drag pieces to explore it instead. */}
-        {total > 0 && (
-          <AnalysisCard analysis={analysis} running={running} starting={starting}
-                        engine={engine} setEngine={chooseEngine} depth={depth}
-                        setDepth={setDepth} onStart={startAnalysis} startFen={startFen} moves={moves} />
-        )}
-        {hasEvals && !retrying && <KeyMoments game={game} evals={evals} onSelect={go} />}
       </aside>
-    </div>
-  )
-}
-
-/** Name, rating and (after analysis) accuracy, shown above/below the board. */
-function PlayerBar({ color, game, analysis }: { color: Color; game: GameDetail; analysis: Analysis | null }) {
-  const s = game.summary
-  const name = color === 'WHITE' ? s.white : s.black
-  const rating = color === 'WHITE' ? s.whiteRating : s.blackRating
-  const accuracy = analysis?.status === 'DONE' ? (color === 'WHITE' ? analysis.accuracyWhite : analysis.accuracyBlack) : null
-  return (
-    <div className="player-bar">
-      <span className={`piece-dot ${color === 'WHITE' ? 'white' : 'black'}`} />
-      <strong>{name}</strong>
-      <span className="muted">({rating ?? '?'})</span>
-      {color === s.playerColor && <span className="tag you">you</span>}
-      {accuracy !== null && <span className="accuracy" title="Accuracy">{accuracy.toFixed(1)}%</span>}
     </div>
   )
 }

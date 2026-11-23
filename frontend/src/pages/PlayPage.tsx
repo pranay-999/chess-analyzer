@@ -2,8 +2,9 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { useNavigate } from 'react-router'
 import { api, type BotLevel, type Color, type GameStatus, type LegalMove } from '../api'
-import { formatClock, newClock, pressClock, remaining, TIME_CONTROLS, type Clock, type TimeControl } from '../clock'
+import { newClock, pressClock, remaining, TIME_CONTROLS, type Clock, type TimeControl } from '../clock'
 import MoveList from '../components/MoveList'
+import PlayerStrip from '../components/PlayerStrip'
 import { useTheme } from '../theme'
 import { useBoardInput } from '../boardInput'
 import { useGameEndSound, useLowTimeWarning, useMoveSound } from '../sounds'
@@ -173,8 +174,8 @@ export default function PlayPage() {
   return (
     <div className="game-layout">
       <div className="board-column">
-        <PlayerRow name={game ? `${game.bot.name} (bot)` : 'Bot'} rating={game?.bot.approxElo}
-                   color={other(you)} game={game} sideToMove={sideToMove} now={now} thinking={botTurn} />
+        <PlayerRow name={game ? `${game.bot.name} (bot)` : 'Bot'} rating={game ? `~${game.bot.approxElo}` : undefined}
+                   color={other(you)} game={game} fen={fen} sideToMove={sideToMove} now={now} thinking={botTurn} />
         <div className="board">
           <Chessboard options={{
             id: 'play-board',
@@ -191,7 +192,7 @@ export default function PlayPage() {
             ...boardColors,
           }} />
         </div>
-        <PlayerRow name="You" color={you} game={game} sideToMove={sideToMove} now={now} thinking={false} />
+        <PlayerRow name="You" color={you} game={game} fen={fen} sideToMove={sideToMove} now={now} thinking={false} />
       </div>
 
       <aside className="side-column">
@@ -242,18 +243,24 @@ export default function PlayPage() {
           </div>
         )}
 
-        {playing && (
-          <div className="card compact">
-            <strong>vs {game.bot.name} <span className="muted small">~{game.bot.approxElo}</span></strong>
-            <span className="muted small">{yourTurn ? 'Your move: drag or tap a piece.' : `${game.bot.name} is thinking…`}</span>
-            <button className="btn" onClick={resign}>⚑ Resign</button>
-          </div>
-        )}
-
-        {game && game.moves.length > 0 && (
-          <div className="card compact">
-            <MoveList moves={game.moves.map((m, i) => ({ ...m, ply: i + 1 }))} evals={new Map()}
-                      currentPly={game.moves.length} onSelect={() => {}} />
+        {/* The game panel: who you're playing, the moves, and Resign at the bottom. */}
+        {game && (
+          <div className="game-panel">
+            <div className="panel-tabs"><span className="panel-tab active">vs {game.bot.name}</span></div>
+            <div className="panel-body">
+              {playing && (
+                <span className="muted small">{yourTurn ? 'Your move: drag or tap a piece. You can pre-move while the bot thinks.' : `${game.bot.name} is thinking…`}</span>
+              )}
+              {game.moves.length > 0
+                ? <MoveList moves={game.moves.map((m, i) => ({ ...m, ply: i + 1 }))} evals={new Map()}
+                            currentPly={game.moves.length} onSelect={() => {}} />
+                : <span className="muted small">No moves yet.</span>}
+            </div>
+            {playing && (
+              <div className="panel-actions">
+                <button className="btn" onClick={resign}>⚑ Resign</button>
+              </div>
+            )}
           </div>
         )}
       </aside>
@@ -261,12 +268,13 @@ export default function PlayPage() {
   )
 }
 
-/** Name + clock above/below the board. */
-function PlayerRow({ name, rating, color, game, sideToMove, now, thinking }: {
+/** Name + clock above/below the board (a component, so it can use the low-time hook). */
+function PlayerRow({ name, rating, color, game, fen, sideToMove, now, thinking }: {
   name: string
-  rating?: number
+  rating?: string
   color: Color
   game: BotGame | null
+  fen: string
   sideToMove: Color
   now: number
   thinking: boolean
@@ -275,15 +283,8 @@ function PlayerRow({ name, rating, color, game, sideToMove, now, thinking }: {
   const ms = game?.clock ? remaining(game.clock, color, game.end ? other(color) : sideToMove, game.end ? game.clock.runningSince : now) : null
   useLowTimeWarning(game?.you === color ? ms : null, running) // beeps under 10 s, your clock only
   return (
-    <div className="player-bar">
-      <span className={`piece-dot ${color === 'WHITE' ? 'white' : 'black'}`} />
-      <strong>{name}</strong>
-      {rating && <span className="muted">(~{rating})</span>}
-      {thinking && <span className="spinner" />}
-      {ms !== null && (
-        <span className={`clock ${running ? 'running' : ''} ${ms < 20_000 ? 'low' : ''}`}>{formatClock(ms)}</span>
-      )}
-    </div>
+    <PlayerStrip name={name} rating={rating} color={color} fen={fen} clockMs={ms} running={running}
+                 tags={thinking && <span className="spinner" />} />
   )
 }
 
